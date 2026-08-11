@@ -14,9 +14,15 @@
  ******************************************************************************/
 
 var CONFIG = {
-  // เว้นว่างไว้ = ใช้ Spreadsheet ที่ผูกกับสคริปต์นี้ (แนะนำ)
+  // เว้นว่างไว้ = ใช้ Spreadsheet ที่ผูกกับสคริปต์นี้ (แนะนำ — Sheet ID จะได้ไม่ต้องอยู่ในโค้ด)
   // ถ้าจะแยกไฟล์ ให้ใส่ ID ของ Spreadsheet ที่ต้องการ
   SPREADSHEET_ID: '',
+
+  // กันคนที่บังเอิญเจอ URL มายิง API — ต้องตรงกับ API_TOKEN ใน js/config.js
+  // เว้นว่าง ('') = ปิดการตรวจสอบ (ใครมี URL ก็เรียกได้)
+  // อยากเปลี่ยน token: แก้ทั้งที่นี่และใน js/config.js ให้ตรงกัน แล้ว deploy ใหม่
+  API_TOKEN: 'L7PrOxo9f-KiHC81yykGRQ',
+
   TIMEZONE: 'Asia/Bangkok',
   SHEETS: {
     PLAYERS: 'Players',
@@ -78,11 +84,20 @@ function route_(p) {
   var callback = p.callback ? String(p.callback) : '';
   var out;
   try {
+    checkToken_(p);
     out = { ok: true, data: dispatch_(p) };
   } catch (err) {
     out = { ok: false, error: String((err && err.message) || err) };
   }
   return reply_(out, callback);
+}
+
+/** ตรวจ token ทุก request (ยกเว้นตั้ง API_TOKEN เป็นค่าว่าง = ปิดการตรวจ) */
+function checkToken_(p) {
+  if (!CONFIG.API_TOKEN) return;
+  if (String((p && p.token) || '') !== CONFIG.API_TOKEN) {
+    throw new Error('ไม่ได้รับอนุญาต — token ไม่ถูกต้องหรือไม่ได้ส่งมา');
+  }
 }
 
 function reply_(obj, callback) {

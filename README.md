@@ -31,8 +31,11 @@ Money Result/
 │   ├── ledger.js         # ตรรกะหน้า 1
 │   └── dashboard.js      # ตรรกะหน้า 2 + กราฟ SVG
 └── gas/
-    └── Code.gs           # โค้ดฝั่ง Backend (วางใน Google Apps Script)
+    ├── Code.gs           # โค้ดฝั่ง Backend (วางใน Google Apps Script)
+    └── appsscript.json   # manifest — timezone + ตั้งค่า web app (access: ANYONE_ANONYMOUS)
 ```
+
+> `gas/.clasp.json` ถูก gitignore ไว้ เพราะมี Sheet ID กับ script ID ของจริง — ไม่ควรขึ้น public repo
 
 ---
 
@@ -116,23 +119,18 @@ python -m http.server 8777
 
 ### 1.5 ใส่ URL ลงในเว็บ
 
-เลือกวิธีใดวิธีหนึ่ง:
-
-**วิธีที่ 1 — ใส่ในโค้ด (แนะนำ ถ้าใช้หลายเครื่อง)**
-
-แก้ไฟล์ `js/config.js`:
+แก้ไฟล์ `js/config.js` แล้ว push ขึ้น GitHub — **ที่นี่ที่เดียว**
 
 ```js
 window.APP_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbxxxx.../exec',
+  API_URL:   'https://script.google.com/macros/s/AKfycbxxxx.../exec',
+  API_TOKEN: 'xxxxxxxxxxxxxxxxxxxxxx',   // ต้องตรงกับ CONFIG.API_TOKEN ใน gas/Code.gs
   ...
 };
 ```
 
-**วิธีที่ 2 — ใส่ผ่านหน้าเว็บ**
-
-เปิดเว็บ → กดปุ่ม **⚙️** มุมขวาบน → วาง URL → กด **ทดสอบการเชื่อมต่อ** → **บันทึก**
-(ค่าจะถูกเก็บใน localStorage ของเบราว์เซอร์เครื่องนั้น)
+> 🔒 ปลายทางถูกล็อกไว้โดยตั้งใจ — **ผู้ใช้แก้ผ่านหน้าเว็บไม่ได้** (ไม่มีปุ่มตั้งค่า)
+> ข้อดีคือผู้ใช้ใหม่เปิดลิงก์แล้วใช้ได้ทันที ไม่ต้องตั้งค่าอะไรเลย
 
 ### 1.6 เพิ่มรายชื่อผู้เล่น
 
@@ -263,7 +261,9 @@ GitHub Pages จะ build ใหม่เองภายในไม่กี่
 
 | อาการ | สาเหตุ / วิธีแก้ |
 |-------|-----------------|
-| `ยังไม่ได้ตั้งค่า API URL` | ยังไม่ได้ใส่ URL — กดปุ่ม ⚙️ แล้วใส่ หรือแก้ `js/config.js` |
+| `ยังไม่ได้ตั้งค่า API_URL ใน js/config.js` | ยังไม่ได้ใส่ URL — แก้ `js/config.js` แล้ว push ใหม่ |
+| `ไม่ได้รับอนุญาต — token ไม่ถูกต้อง` | `API_TOKEN` ใน `js/config.js` กับใน `gas/Code.gs` ไม่ตรงกัน |
+| หน้า **Authorization needed** / 403 | ยังไม่ได้ authorize สคริปต์ — เปิด Apps Script → Run `setup` → Allow |
 | `เชื่อมต่อ API ไม่สำเร็จ` / โหลดค้าง | Deploy ตั้ง *Who has access* ไม่ใช่ **Anyone** → แก้แล้ว Deploy ใหม่ |
 | แก้ `Code.gs` แล้วไม่มีอะไรเปลี่ยน | ต้อง **Deploy → Manage deployments → ✏️ → New version → Deploy** |
 | `ไม่รู้จักคำสั่ง (action)` | โค้ดใน Apps Script เป็นเวอร์ชันเก่า → Deploy version ใหม่ |
@@ -275,14 +275,40 @@ GitHub Pages จะ build ใหม่เองภายในไม่กี่
 
 ---
 
-## 🔒 หมายเหตุเรื่องความปลอดภัย
+## 🔒 ความปลอดภัย
 
-Web App ที่ตั้งเป็น *Anyone* หมายความว่า **ใครที่รู้ URL ก็เรียก API ได้**
-สำหรับใช้กันในกลุ่มเพื่อนถือว่าเพียงพอ แต่ถ้าต้องการกันเพิ่ม แนะนำ:
+Web App ตั้งเป็น *Anyone* (จำเป็น ไม่งั้นเว็บเรียก API ไม่ได้) จึงมีการตรวจ **token** กำกับไว้
 
-- เพิ่มการตรวจ token ง่าย ๆ ใน `dispatch_()` ของ `Code.gs`
-  แล้วส่ง `token` ไปพร้อมทุก request จากฝั่ง `api.js`
-- อย่าใส่ข้อมูลที่เป็นความลับจริงจังลงในชีตนี้
+```
+js/config.js  ── API_TOKEN ──┐
+                             ├── ต้องตรงกัน
+gas/Code.gs   ── API_TOKEN ──┘
+```
+
+ทุก request จาก `js/api.js` จะแนบ `token` ไปด้วยอัตโนมัติผ่านฟังก์ชัน `withAuth()`
+ฝั่ง `Code.gs` เรียก `checkToken_()` **ก่อน** `dispatch_()` — ถ้า token ไม่ตรง จะไม่มีคำสั่งไหนได้แตะ Sheet เลย
+
+**กันอะไรได้:** บอทที่สแกนเจอ URL, ลิงก์ `/exec` ที่หลุดไปอยู่ใน log หรือแชท
+
+**กันไม่ได้:** คนที่เปิด public repo นี้ หรือกด View Source ที่หน้าเว็บ — เพราะเป็น static site
+ไฟล์ JS ทุกไฟล์ถูกส่งไปที่เบราว์เซอร์ผู้ใช้ จึงซ่อนความลับไว้ในนั้นไม่ได้
+
+> คิดว่ามันคือ **กลอนประตู ไม่ใช่ตู้เซฟ** — ถ้าต้องการกันจริงจัง ต้องเปลี่ยน repo เป็น private
+
+**ข้อควรรู้:** ระบบนี้ไม่มีบัญชีผู้ใช้ — **ใครก็ตามที่ได้ลิงก์เว็บไป มีสิทธิ์เท่ากันทั้งหมด**
+รวมถึงลบข้อมูลทั้งวงและลบผู้เล่นได้ เหมาะกับใช้ในกลุ่มที่ไว้ใจกัน
+
+**เปลี่ยน token:** แก้ทั้ง 2 ไฟล์ให้ตรงกัน → `cd gas && clasp push && clasp deploy` → `git push`
+**ปิดการตรวจ:** ตั้ง `API_TOKEN: ''` ใน `gas/Code.gs`
+
+### การแชร์ Google Sheet
+
+การตั้งค่าแชร์ของ Sheet **ไม่มีผลกับการทำงานของแอป** เพราะ Apps Script เข้าถึงในนามเจ้าของไฟล์เสมอ
+(`executeAs: USER_DEPLOYING`) เว็บไม่เคยคุยกับ Sheet โดยตรง
+
+- ตั้ง **Restricted** → ปลอดภัยที่สุด แอปยังทำงานปกติ
+- ตั้ง **Anyone with link / Viewer** → ได้ ใครมีลิงก์ Sheet อ่านข้อมูลดิบได้ แต่แก้ไม่ได้
+- ❌ **อย่าตั้ง Anyone with link / Editor** → ใครก็ลบข้อมูลทิ้งได้ และยอดจะเพี้ยนโดยแอปไม่รู้ตัว
 
 ---
 
@@ -293,5 +319,22 @@ Web App ที่ตั้งเป็น *Anyone* หมายความว�
 | ปุ่มเติมเงิน (x100/x200/x500) | `js/config.js` → `MULTIPLIERS` |
 | Buy In เริ่มต้น (ตอนนี้ = 200) | `js/config.js` → `DEFAULT_BUY_IN` |
 | สีทั้งหมด (light/dark) | `css/style.css` → บล็อก `:root` |
-| ความหนา/ระยะห่างแท่งกราฟ | `js/dashboard.js` → `BAND`, `BAR`, `NAME_W` |
+| ความหนา/ระยะห่างแท่งกราฟ | `js/dashboard.js` → `chartMetrics()` |
 | Timezone ฝั่ง Backend | `gas/Code.gs` → `CONFIG.TIMEZONE` |
+| ปลายทาง API / token | `js/config.js` + `gas/Code.gs` (ต้องตรงกัน) |
+
+---
+
+## 🔧 อัปเดตโค้ดฝั่ง Backend ด้วย clasp
+
+โปรเจกต์นี้ผูกกับ Apps Script ผ่าน [clasp](https://github.com/google/clasp) แล้ว
+แก้ `gas/Code.gs` เสร็จ สั่ง 2 คำสั่งนี้พอ ไม่ต้องเข้าเว็บ Apps Script:
+
+```bash
+cd gas
+clasp push          # อัปโหลดโค้ดขึ้น Apps Script
+clasp deploy        # สร้าง version ใหม่ (ถ้าไม่ทำ เว็บจะยังเรียกโค้ดเก่า)
+```
+
+ครั้งแรกบนเครื่องใหม่ต้อง `npm i -g @google/clasp` และ `clasp login` ก่อน
+และ `gas/.clasp.json` ไม่ได้อยู่ใน repo — สร้างใหม่ด้วย `clasp clone <scriptId>`

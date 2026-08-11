@@ -46,7 +46,6 @@
 
   MR.API = {
     getUrl: function () { return 'demo://in-memory'; },
-    setUrl: function () {},
     isConfigured: function () { return true; },
 
     ping: function () { return delay({ pong: true, demo: true }); },

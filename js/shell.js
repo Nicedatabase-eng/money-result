@@ -96,68 +96,6 @@ window.MR = window.MR || {};
     });
   };
 
-  /* ---------- Modal ตั้งค่า API URL ---------- */
-
-  function openSettings() {
-    var backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
-    backdrop.innerHTML =
-      '<div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="setTitle">' +
-        '<h2 id="setTitle" class="text-lg font-semibold mb-1">ตั้งค่าการเชื่อมต่อ</h2>' +
-        '<p class="text-sm mb-4" style="color:var(--ink-2)">' +
-          'วาง <b>Web app URL</b> ที่ได้จากการ Deploy Google Apps Script (ลงท้ายด้วย <code>/exec</code>)' +
-        '</p>' +
-        '<label class="label" for="apiUrlInput">API URL</label>' +
-        '<input id="apiUrlInput" class="field" type="url" spellcheck="false" autocomplete="off" ' +
-               'placeholder="https://script.google.com/macros/s/AKfy.../exec">' +
-        '<div class="flex flex-wrap gap-2 mt-4 justify-end">' +
-          '<button class="btn" data-test>ทดสอบการเชื่อมต่อ</button>' +
-          '<button class="btn" data-cancel>ยกเลิก</button>' +
-          '<button class="btn btn-primary" data-save>บันทึก</button>' +
-        '</div>' +
-        '<p class="text-xs mt-3" style="color:var(--muted)">ค่านี้เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</p>' +
-      '</div>';
-
-    var input = backdrop.querySelector('#apiUrlInput');
-    input.value = MR.API.getUrl();
-
-    function close() { backdrop.remove(); document.removeEventListener('keydown', onKey); }
-    function onKey(e) { if (e.key === 'Escape') close(); }
-
-    backdrop.querySelector('[data-cancel]').onclick = close;
-    backdrop.onclick = function (e) { if (e.target === backdrop) close(); };
-    document.addEventListener('keydown', onKey);
-
-    backdrop.querySelector('[data-test]').onclick = async function () {
-      var btn = this;
-      var prev = MR.API.getUrl();
-      MR.API.setUrl(input.value);
-      btn.disabled = true; btn.textContent = 'กำลังทดสอบ…';
-      try {
-        await MR.API.ping();
-        MR.toast('เชื่อมต่อสำเร็จ ✓', 'success');
-      } catch (err) {
-        MR.API.setUrl(prev);
-        MR.toast('เชื่อมต่อไม่สำเร็จ: ' + err.message, 'error');
-      } finally {
-        btn.disabled = false; btn.textContent = 'ทดสอบการเชื่อมต่อ';
-      }
-    };
-
-    backdrop.querySelector('[data-save]').onclick = function () {
-      MR.API.setUrl(input.value);
-      MR.toast('บันทึกการตั้งค่าแล้ว — กำลังโหลดใหม่', 'success');
-      close();
-      setTimeout(function () { location.reload(); }, 600);
-    };
-
-    document.body.appendChild(backdrop);
-    input.focus();
-    input.select();
-  }
-
-  MR.openSettings = openSettings;
-
   /* ---------- init ---------- */
 
   MR.initShell = function () {
@@ -165,9 +103,6 @@ window.MR = window.MR || {};
 
     var themeBtn = document.getElementById('themeToggle');
     if (themeBtn) themeBtn.addEventListener('click', cycleTheme);
-
-    var setBtn = document.getElementById('settingsBtn');
-    if (setBtn) setBtn.addEventListener('click', openSettings);
 
     // ไฮไลต์เมนูของหน้าปัจจุบัน
     var page = document.body.getAttribute('data-page');

@@ -1,14 +1,18 @@
 /**
  * ตั้งค่าโปรเจกต์
  *
- * API_URL — วาง Web app URL ที่ได้จากการ Deploy Google Apps Script
- *           (ลงท้ายด้วย /exec)
+ * API_URL / API_TOKEN — ตั้งไว้ตายตัวในไฟล์นี้ที่เดียว
+ * ผู้ใช้ปลายทางแก้ผ่านหน้าเว็บไม่ได้ (ไม่มีปุ่มตั้งค่าแล้ว)
  *
- * ถ้าไม่อยากแก้ไฟล์นี้ สามารถกดปุ่ม ⚙️ ในหน้าเว็บเพื่อใส่ URL ได้
- * (ค่าที่ใส่ผ่านหน้าเว็บจะถูกเก็บใน localStorage และมีลำดับความสำคัญสูงกว่า)
+ * ถ้าต้องเปลี่ยนปลายทาง ให้แก้ที่นี่แล้ว push ขึ้น GitHub ใหม่
+ * และถ้าเปลี่ยน API_TOKEN ต้องแก้ CONFIG.API_TOKEN ใน gas/Code.gs
+ * ให้ตรงกัน แล้ว deploy Apps Script ใหม่ด้วย
  */
 window.APP_CONFIG = {
-  API_URL: '',
+  API_URL: 'https://script.google.com/macros/s/AKfycby6PUyoelpeFUccO21SDyK0Gcf4UpuXfsGd6VnMQ4mBiFfoK5q5Q8JYzpTjAlLxpgUl/exec',
+
+  /** ต้องตรงกับ CONFIG.API_TOKEN ใน gas/Code.gs */
+  API_TOKEN: 'L7PrOxo9f-KiHC81yykGRQ',
 
   /** ปุ่มเติม Buy In ระหว่างเกม */
   MULTIPLIERS: [100, 200, 500],

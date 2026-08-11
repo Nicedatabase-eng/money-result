@@ -12,27 +12,21 @@ window.MR = window.MR || {};
 (function (MR) {
   'use strict';
 
-  var LS_URL = 'mr.apiUrl';
   var JSONP_TIMEOUT = 25000;
 
+  /** ปลายทางถูกกำหนดตายตัวใน js/config.js — แก้ผ่านหน้าเว็บไม่ได้ */
   function getUrl() {
-    var saved = '';
-    try { saved = localStorage.getItem(LS_URL) || ''; } catch (e) { /* ignore */ }
-    return (saved || (window.APP_CONFIG && window.APP_CONFIG.API_URL) || '').trim();
+    return ((window.APP_CONFIG && window.APP_CONFIG.API_URL) || '').trim();
   }
 
-  function setUrl(url) {
-    var u = String(url || '').trim();
-    try {
-      if (u) localStorage.setItem(LS_URL, u);
-      else localStorage.removeItem(LS_URL);
-    } catch (e) { /* ignore */ }
+  function getToken() {
+    return ((window.APP_CONFIG && window.APP_CONFIG.API_TOKEN) || '').trim();
   }
 
   function requireUrl() {
     var u = getUrl();
     if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(u)) {
-      if (!u) throw new Error('ยังไม่ได้ตั้งค่า API URL — กดปุ่ม ⚙️ มุมขวาบนเพื่อใส่ลิงก์ Web App');
+      if (!u) throw new Error('ยังไม่ได้ตั้งค่า API_URL ใน js/config.js');
       throw new Error('API URL ไม่ถูกต้อง ต้องเป็นลิงก์ Google Apps Script ที่ลงท้ายด้วย /exec');
     }
     return u;
@@ -79,17 +73,22 @@ window.MR = window.MR || {};
     });
   }
 
+  /** แนบ action + token เข้ากับทุก request */
+  function withAuth(action, extra) {
+    return Object.assign({ action: action, token: getToken() }, extra || {});
+  }
+
   async function get(action, params) {
     var url = requireUrl();
-    var q = toQuery(Object.assign({ action: action }, params || {}));
+    var q = toQuery(withAuth(action, params));
     try {
       var res = await fetch(url + '?' + q.toString(), { method: 'GET', redirect: 'follow' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return unwrap(await res.json());
     } catch (err) {
       // network/CORS พัง → ลอง JSONP ต่อ; ถ้า error มาจาก server เอง ให้โยนออกไปเลย
-      if (err && /^(HTTP|เกิดข้อผิดพลาด|ยังไม่ได้ตั้งค่า|API URL)/.test(err.message)) throw err;
-      return unwrap(await jsonp(Object.assign({ action: action }, params || {})));
+      if (err && /^(HTTP|เกิดข้อผิดพลาด|ยังไม่ได้ตั้งค่า|API URL|ไม่ได้รับอนุญาต)/.test(err.message)) throw err;
+      return unwrap(await jsonp(withAuth(action, params)));
     }
   }
 
@@ -99,7 +98,7 @@ window.MR = window.MR || {};
       method: 'POST',
       redirect: 'follow',
       // ตั้งใจไม่ใส่ headers — ดูหมายเหตุ CORS ด้านบน
-      body: JSON.stringify(Object.assign({ action: action }, payload || {}))
+      body: JSON.stringify(withAuth(action, payload))
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return unwrap(await res.json());
@@ -124,7 +123,6 @@ window.MR = window.MR || {};
 
   MR.API = {
     getUrl: getUrl,
-    setUrl: setUrl,
     isConfigured: function () { return /^https:\/\/script\.google\.com\/.+\/exec/.test(getUrl()); },
 
     ping: function () { return get('ping'); },

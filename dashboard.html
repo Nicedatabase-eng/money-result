@@ -57,7 +57,6 @@ tailwind.config = {
       <a href="index.html" data-nav="ledger" class="px-2.5 py-2 rounded-lg text-sm whitespace-nowrap">บันทึกยอด</a>
       <a href="dashboard.html" data-nav="dashboard" class="px-2.5 py-2 rounded-lg text-sm whitespace-nowrap">สรุปผล</a>
       <button id="themeToggle" class="btn btn-ghost btn-sm" type="button">🖥️</button>
-      <button id="settingsBtn" class="btn btn-ghost btn-sm" type="button" title="ตั้งค่า API" aria-label="ตั้งค่า API">⚙️</button>
     </nav>
   </div>
 </header>
@@ -66,8 +65,7 @@ tailwind.config = {
 
   <div id="setupBanner" hidden class="card" style="border-color:var(--warn);background:var(--warn-wash)">
     <p class="font-semibold mb-1">⚠️ ยังไม่ได้เชื่อมต่อฐานข้อมูล</p>
-    <p class="text-sm text-ink2 mb-3">ตั้งค่า Web app URL ของ Google Apps Script ก่อนเริ่มใช้งาน (ดูขั้นตอนใน README.md)</p>
-    <button class="btn btn-primary btn-sm" onclick="MR.openSettings()">ตั้งค่าเลย</button>
+    <p class="text-sm text-ink2">ปลายทาง API ถูกกำหนดไว้ใน <code>js/config.js</code> — ถ้าขึ้นข้อความนี้แปลว่าค่ายังไม่ถูกตั้ง กรุณาแจ้งผู้ดูแล</p>
   </div>
 
   <!-- ══════════════════ ตัวกรองช่วงเวลา ══════════════════ -->

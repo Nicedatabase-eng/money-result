@@ -1,3 +1,6 @@
+# clasp — มี scriptId และ Sheet ID ของจริง ห้ามขึ้น public repo
+gas/.clasp.json
+
 # OS / editor
 Thumbs.db
 ehthumbs.db
