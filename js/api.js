@@ -135,7 +135,7 @@ window.MR = window.MR || {};
     cachedPlayers: cachedPlayers,
 
     addPlayer: function (name) { return post('addPlayer', { name: name }); },
-    renamePlayer: function (id, name) { return post('renamePlayer', { id: id, name: name }); },
+    /** เอาออกจากรายชื่อที่เลือกได้เท่านั้น — ประวัติการเล่นไม่ถูกแตะ */
     deletePlayer: function (id) { return post('deletePlayer', { id: id }); },
 
     bootstrap: async function () {
@@ -145,8 +145,8 @@ window.MR = window.MR || {};
     },
     getRecords: function (range) { return get('getRecords', range || {}); },
     getSession: function (date) { return get('getSession', { date: date }); },
-    saveSession: function (session) { return post('saveSession', session); },
-    deleteSession: function (date) { return post('deleteSession', { date: date }); }
+    /** บันทึกได้อย่างเดียว — วันที่ที่บันทึกแล้วจะถูก server ปฏิเสธ */
+    saveSession: function (session) { return post('saveSession', session); }
   };
 
 })(window.MR);

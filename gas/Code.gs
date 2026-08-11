@@ -121,13 +121,17 @@ function dispatch_(p) {
 
     case 'getPlayers':    return listPlayers_();
     case 'addPlayer':     return addPlayer_(p);
-    case 'renamePlayer':  return renamePlayer_(p);
     case 'deletePlayer':  return deletePlayer_(p);
 
     case 'getRecords':    return listRecords_(p);
     case 'getSession':    return getSession_(p);
     case 'saveSession':   return saveSession_(p);
-    case 'deleteSession': return deleteSession_(p);
+
+    // ---- คำสั่งที่ถูกถอดออกโดยตั้งใจ (ชีต Records เป็นแบบเขียนเพิ่มอย่างเดียว) ----
+    // ตอบให้ชัดว่าปิดถาวร ไม่ใช่พิมพ์ผิด เผื่อมีเว็บเวอร์ชันเก่าค้างอยู่ในเครื่องใคร
+    case 'deleteSession':
+    case 'renamePlayer':
+      throw new Error('คำสั่งนี้ถูกปิดใช้งานถาวร — ข้อมูลที่บันทึกแล้วแก้หรือลบผ่านแอปไม่ได้');
 
     default:
       throw new Error('ไม่รู้จักคำสั่ง (action): "' + action + '"');
@@ -183,42 +187,11 @@ function addPlayer_(p) {
   }
 }
 
-function renamePlayer_(p) {
-  var id = String(p.id || '').trim();
-  var name = String(p.name || '').trim();
-  if (!id || !name) throw new Error('ต้องระบุ id และ name');
-
-  var sheet = getSheet_(CONFIG.SHEETS.PLAYERS, HEADERS.PLAYERS);
-  var rows = readObjects_(sheet);
-  var target = null;
-
-  for (var i = 0; i < rows.length; i++) {
-    if (String(rows[i].ID) === id) target = rows[i];
-    else if (String(rows[i].Name || '').trim().toLowerCase() === name.toLowerCase()) {
-      throw new Error('มีชื่อ "' + name + '" อยู่แล้ว');
-    }
-  }
-  if (!target) throw new Error('ไม่พบผู้เล่น id: ' + id);
-
-  var oldName = String(target.Name).trim();
-  sheet.getRange(target._row, 2).setValue(name);
-
-  // อัปเดตชื่อในประวัติการเล่นให้ตรงกัน
-  var rec = getSheet_(CONFIG.SHEETS.RECORDS, HEADERS.RECORDS);
-  var last = rec.getLastRow();
-  if (last > 1) {
-    var range = rec.getRange(2, 3, last - 1, 1);
-    var vals = range.getValues();
-    var touched = 0;
-    for (var j = 0; j < vals.length; j++) {
-      if (String(vals[j][0]).trim() === oldName) { vals[j][0] = name; touched++; }
-    }
-    if (touched) range.setValues(vals);
-  }
-  return { id: id, name: name, oldName: oldName };
-}
-
-/** ลบแบบ soft delete — เก็บประวัติการเล่นเดิมไว้ */
+/**
+ * เอาผู้เล่นออกจาก "รายชื่อที่เลือกได้" เท่านั้น (ตั้ง Active = FALSE)
+ * ไม่มีการลบแถวใด ๆ ในชีต Records — ประวัติการเล่นเดิมยังอยู่ครบ
+ * และยังถูกนับรวมในหน้าสรุปผลเหมือนเดิม
+ */
 function deletePlayer_(p) {
   var id = String(p.id || '').trim();
   if (!id) throw new Error('ต้องระบุ id');
@@ -321,7 +294,16 @@ function saveSession_(p) {
   lock.waitLock(20000);
   try {
     var sheet = getSheet_(CONFIG.SHEETS.RECORDS, HEADERS.RECORDS);
-    var replaced = deleteRowsByDate_(sheet, date);   // บันทึกซ้ำวันเดิม = เขียนทับ
+
+    // ---- กันเขียนทับ: วันไหนบันทึกไปแล้ว บันทึกซ้ำไม่ได้ ----
+    // ตรวจในล็อก เพื่อกันกรณีสองเครื่องกดบันทึกวันเดียวกันพร้อมกัน
+    var existing = readObjects_(sheet).filter(function (r) {
+      return normalizeDate_(r.Date) === date;
+    });
+    if (existing.length) {
+      throw new Error('วันที่ ' + date + ' มีข้อมูลบันทึกไว้แล้ว (' + existing.length +
+                      ' แถว) — ข้อมูลที่บันทึกแล้วเขียนทับไม่ได้');
+    }
 
     var sessionId = String(p.sessionId || '').trim() || ('S' + date.replace(/-/g, '') + '-' + stamp_());
     var now = new Date();
@@ -349,26 +331,7 @@ function saveSession_(p) {
     sheet.getRange(startRow, 1, values.length, HEADERS.RECORDS.length).setValues(values);
     sheet.getRange(startRow, 2, values.length, 1).setNumberFormat('@');
 
-    return { sessionId: sessionId, date: date, saved: values.length, replaced: replaced };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function deleteSession_(p) {
-  var date = normalizeDate_(p && p.date);
-  var sessionId = String((p && p.sessionId) || '').trim();
-  if (!date && !sessionId) throw new Error('ต้องระบุ date หรือ sessionId');
-
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    var sheet = getSheet_(CONFIG.SHEETS.RECORDS, HEADERS.RECORDS);
-    var removed = date
-      ? deleteRowsByDate_(sheet, date)
-      : deleteRowsWhere_(sheet, function (r) { return String(r.SessionID) === sessionId; });
-    if (!removed) throw new Error('ไม่พบข้อมูลที่ต้องการลบ');
-    return { removed: removed, date: date, sessionId: sessionId };
+    return { sessionId: sessionId, date: date, saved: values.length };
   } finally {
     lock.releaseLock();
   }
@@ -418,20 +381,9 @@ function readObjects_(sheet) {
   return out;
 }
 
-function deleteRowsByDate_(sheet, date) {
-  return deleteRowsWhere_(sheet, function (r) { return normalizeDate_(r.Date) === date; });
-}
-
-/** ลบจากล่างขึ้นบน เพื่อไม่ให้เลขแถวเลื่อนระหว่างลบ */
-function deleteRowsWhere_(sheet, predicate) {
-  var rows = readObjects_(sheet);
-  var targets = [];
-  for (var i = 0; i < rows.length; i++) {
-    if (predicate(rows[i])) targets.push(rows[i]._row);
-  }
-  for (var k = targets.length - 1; k >= 0; k--) sheet.deleteRow(targets[k]);
-  return targets.length;
-}
+/* หมายเหตุ: ไม่มีฟังก์ชันลบแถวในไฟล์นี้โดยตั้งใจ
+   ชีต Records เป็นแบบ append-only — เพิ่มได้อย่างเดียว
+   ถ้าจำเป็นต้องแก้/ลบจริง ๆ ต้องเข้าไปทำใน Google Sheet ด้วยมือ */
 
 function normalizeDate_(value) {
   if (!value && value !== 0) return '';

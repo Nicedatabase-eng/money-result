@@ -102,9 +102,10 @@ tailwind.config = {
     </div>
   </section>
 
-  <!-- แจ้งว่ากำลังแก้ไขข้อมูลเดิมของวันนี้ -->
-  <div id="editBanner" hidden class="card !py-3" style="border-color:var(--accent);background:var(--accent-wash)">
-    <p class="text-sm">📝 วันที่นี้มีข้อมูลบันทึกไว้แล้ว — โหลดขึ้นมาให้แก้ไข <b>การบันทึกจะเขียนทับของเดิม</b></p>
+  <!-- แจ้งว่าวันนี้บันทึกไปแล้ว บันทึกซ้ำไม่ได้ -->
+  <div id="editBanner" hidden class="card !py-3" style="border-color:var(--warn);background:var(--warn-wash)">
+    <p class="text-sm">🔒 <b>วันที่นี้บันทึกไปแล้ว</b> — ข้อมูลที่บันทึกแล้วแก้หรือลบผ่านแอปไม่ได้
+    ถ้าต้องการบันทึกวงใหม่ กรุณาเลือกวันอื่น (ดูยอดของวันนี้ได้ที่หน้า <a href="dashboard.html" class="underline">สรุปผล</a>)</p>
   </div>
 
   <!-- ══════════════════ 2. รายคน ══════════════════ -->

@@ -62,14 +62,6 @@
       return delay({ id: p.id, name: p.name });
     },
 
-    renamePlayer: function (id, name) {
-      var p = players.filter(function (x) { return x.id === id; })[0];
-      if (!p) return Promise.reject(new Error('ไม่พบผู้เล่น'));
-      records.forEach(function (r) { if (r.player === p.name) r.player = name; });
-      p.name = name;
-      return delay({ id: id, name: name });
-    },
-
     deletePlayer: function (id) {
       players = players.filter(function (p) { return p.id !== id; });
       return delay({ id: id });
@@ -97,7 +89,11 @@
       if (MR.round2(total) !== 0) {
         return Promise.reject(new Error('ยอดสุทธิรวมต้องเท่ากับ 0 (ตอนนี้ ' + MR.round2(total) + ')'));
       }
-      records = records.filter(function (r) { return r.date !== session.date; });
+      // เลียนแบบของจริง: บันทึกทับวันเดิมไม่ได้
+      if (records.some(function (r) { return r.date === session.date; })) {
+        return Promise.reject(new Error('วันที่ ' + session.date +
+          ' มีข้อมูลบันทึกไว้แล้ว — ข้อมูลที่บันทึกแล้วเขียนทับไม่ได้'));
+      }
       var sid = session.sessionId || 'DEMO-' + session.date;
       session.rows.forEach(function (r) {
         records.push({
@@ -110,11 +106,6 @@
       return delay({ sessionId: sid, date: session.date, saved: session.rows.length, replaced: 0 });
     },
 
-    deleteSession: function (date) {
-      var before = records.length;
-      records = records.filter(function (r) { return r.date !== date; });
-      return delay({ removed: before - records.length, date: date });
-    }
   };
 
   document.addEventListener('DOMContentLoaded', function () {

@@ -377,47 +377,15 @@
                MR.escapeHtml(r.player) + ' ' + MR.signed(r.net) + '</span>';
       }).join('');
 
-      return '<div class="rounded-lg border border-line p-2.5" data-date="' + s.date + '">' +
-        '<div class="flex items-center justify-between gap-2 mb-1.5">' +
-          '<div class="min-w-0">' +
-            '<span class="text-sm font-semibold">' + MR.dateLabel(s.date) + '</span>' +
-            '<span class="text-xs text-muted ml-2">' + s.rows.length + ' คน · กองกลาง ' +
-              MR.fmt(s.pot) + '</span>' +
-          '</div>' +
-          '<div class="flex gap-1 shrink-0">' +
-            '<a class="btn btn-ghost btn-sm" href="index.html" data-edit title="แก้ไขวันนี้">✎</a>' +
-            '<button class="btn btn-ghost btn-sm btn-danger" data-del title="ลบ">🗑</button>' +
-          '</div>' +
+      return '<div class="rounded-lg border border-line p-2.5">' +
+        '<div class="flex items-baseline justify-between gap-2 mb-1.5">' +
+          '<span class="text-sm font-semibold">' + MR.dateLabel(s.date) + '</span>' +
+          '<span class="text-xs text-muted shrink-0">' + s.rows.length + ' คน · กองกลาง ' +
+            MR.fmt(s.pot) + '</span>' +
         '</div>' +
         '<div class="flex flex-wrap gap-1">' + chips + '</div>' +
       '</div>';
     }).join('');
-
-    MR.els('[data-date]', host).forEach(function (card) {
-      var date = card.getAttribute('data-date');
-
-      MR.el('[data-edit]', card).addEventListener('click', function () {
-        // ให้หน้าบันทึกยอดเปิดที่วันนี้เลย — เคลียร์ร่างเดิมทิ้งก่อน
-        try { localStorage.removeItem('mr.draft'); } catch (e) { /* ignore */ }
-        try { localStorage.setItem('mr.openDate', date); } catch (e) { /* ignore */ }
-      });
-
-      MR.el('[data-del]', card).addEventListener('click', async function () {
-        var ok = await MR.confirm('ลบข้อมูลของวันที่ ' + MR.dateLabel(date) + ' ทั้งหมด?',
-          { danger: true, okText: 'ลบ' });
-        if (!ok) return;
-        try {
-          await MR.API.deleteSession(date);
-          state.records = state.records.filter(function (r) { return r.date !== date; });
-          rebuildMonths();
-          renderMonthPicker();
-          renderAll();
-          MR.toast('ลบข้อมูลวันที่ ' + MR.dateLabel(date) + ' แล้ว', 'success');
-        } catch (err) {
-          MR.toast('ลบไม่สำเร็จ: ' + err.message, 'error');
-        }
-      });
-    });
   }
 
   /* ============================ จัดการผู้เล่น ============================ */
@@ -435,10 +403,9 @@
     host.innerHTML = state.players.map(function (p) {
       return '<div class="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5" ' +
                   'data-pid="' + MR.escapeHtml(p.id) + '">' +
-        '<span class="flex-1 min-w-0 truncate text-sm" data-name>' + MR.escapeHtml(p.name) + '</span>' +
+        '<span class="flex-1 min-w-0 truncate text-sm">' + MR.escapeHtml(p.name) + '</span>' +
         '<span class="text-xs text-muted num shrink-0">' + (counts[p.name] || 0) + ' วัน</span>' +
-        '<button class="btn btn-ghost btn-sm shrink-0" data-rename title="แก้ชื่อ">✎</button>' +
-        '<button class="btn btn-ghost btn-sm btn-danger shrink-0" data-remove title="ลบออกจากรายชื่อ">🗑</button>' +
+        '<button class="btn btn-ghost btn-sm btn-danger shrink-0" data-remove title="เอาออกจากรายชื่อ">🗑</button>' +
       '</div>';
     }).join('');
 
@@ -447,63 +414,21 @@
       var player = state.players.filter(function (p) { return p.id === id; })[0];
       if (!player) return;
 
-      MR.el('[data-rename]', rowEl).addEventListener('click', function () { beginRename(rowEl, player); });
-
       MR.el('[data-remove]', rowEl).addEventListener('click', async function () {
         var ok = await MR.confirm(
-          'เอา "' + player.name + '" ออกจากรายชื่อ?\nประวัติการเล่นที่บันทึกไว้จะยังอยู่ครบ',
+          'เอา "' + player.name + '" ออกจากรายชื่อที่เลือกได้?\n\n' +
+          'ประวัติการเล่นที่บันทึกไว้ยังอยู่ครบและยังนับรวมในหน้าสรุปผลเหมือนเดิม',
           { danger: true, okText: 'เอาออก' });
         if (!ok) return;
         try {
           await MR.API.deletePlayer(id);
           state.players = state.players.filter(function (p) { return p.id !== id; });
           renderPlayerAdmin();
-          MR.toast('เอา "' + player.name + '" ออกแล้ว', 'success');
+          MR.toast('เอา "' + player.name + '" ออกจากรายชื่อแล้ว', 'success');
         } catch (err) {
-          MR.toast('ลบไม่สำเร็จ: ' + err.message, 'error');
+          MR.toast('เอาออกไม่สำเร็จ: ' + err.message, 'error');
         }
       });
-    });
-  }
-
-  /** แก้ชื่อแบบ inline */
-  function beginRename(rowEl, player) {
-    var nameEl = MR.el('[data-name]', rowEl);
-    if (MR.el('input', rowEl)) return;
-
-    var input = document.createElement('input');
-    // ห้ามใส่ text-sm — ช่องกรอกต่ำกว่า 16px ทำให้ Safari บน iPhone ซูมเข้าเอง
-    input.className = 'field field-inline !text-left flex-1 min-w-0';
-    input.value = player.name;
-    input.maxLength = 40;
-    nameEl.replaceWith(input);
-    input.focus();
-    input.select();
-
-    var done = false;
-    async function commit() {
-      if (done) return;
-      done = true;
-      var name = input.value.trim();
-      if (!name || name === player.name) { renderPlayerAdmin(); return; }
-      try {
-        await MR.API.renamePlayer(player.id, name);
-        // ชื่อในประวัติถูกอัปเดตที่ฝั่ง server ด้วย — sync ฝั่ง client ให้ตรงกัน
-        state.records.forEach(function (r) { if (r.player === player.name) r.player = name; });
-        player.name = name;
-        renderPlayerAdmin();
-        renderAll();
-        MR.toast('แก้ชื่อเป็น "' + name + '" แล้ว', 'success');
-      } catch (err) {
-        MR.toast('แก้ชื่อไม่สำเร็จ: ' + err.message, 'error');
-        renderPlayerAdmin();
-      }
-    }
-
-    input.addEventListener('blur', commit);
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); commit(); }
-      if (e.key === 'Escape') { done = true; renderPlayerAdmin(); }
     });
   }
 

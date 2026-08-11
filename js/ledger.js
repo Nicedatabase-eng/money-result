@@ -363,7 +363,13 @@
     var saveBtn = MR.el('#saveBtn');
     var enoughPlayers = state.rows.length >= 2;
 
-    if (!enoughPlayers) {
+    if (state.serverSession) {
+      // วันนี้บันทึกไปแล้ว — ล็อกไว้ก่อนเงื่อนไขอื่นทั้งหมด
+      pill.textContent = '🔒 วันที่นี้บันทึกไปแล้ว — เลือกวันอื่น';
+      pill.style.background = 'var(--warn-wash)';
+      pill.style.color = 'var(--warn-text)';
+      saveBtn.disabled = true;
+    } else if (!enoughPlayers) {
       pill.textContent = 'เลือกผู้เข้าร่วมอย่างน้อย 2 คน';
       pill.style.background = 'var(--warn-wash)';
       pill.style.color = 'var(--warn-text)';
@@ -391,7 +397,7 @@
         : '(เพิ่มเงินให้คนที่เลือก)';
     }
 
-    MR.el('#saveLabel').textContent = state.serverSession ? 'บันทึกทับ' : 'บันทึก';
+    MR.el('#saveLabel').textContent = 'บันทึก';
     saveDraft();
   }
 
@@ -410,43 +416,20 @@
     }
   }
 
-  /** ตรวจว่ามีข้อมูลของวันที่เลือกอยู่แล้วหรือไม่ */
-  async function checkExistingSession(askToLoad) {
+  /**
+   * ตรวจว่าวันที่เลือกมีข้อมูลอยู่แล้วหรือไม่
+   * ถ้ามี = ล็อกไม่ให้บันทึกซ้ำ (ข้อมูลที่บันทึกแล้วเขียนทับไม่ได้)
+   */
+  async function checkExistingSession() {
     state.serverSession = null;
     MR.el('#editBanner').hidden = true;
     try {
       var session = await MR.API.getSession(state.date);
-      if (!session) { refresh(); return; }
-
-      state.serverSession = session;
-      MR.el('#editBanner').hidden = false;
-
-      if (askToLoad) {
-        var yes = await MR.confirm(
-          'วันที่ ' + MR.dateLabel(state.date) + ' มีข้อมูลบันทึกไว้แล้ว (' + session.rows.length + ' คน)\n' +
-          'ต้องการโหลดขึ้นมาแก้ไขหรือไม่? ข้อมูลที่กรอกค้างอยู่จะถูกแทนที่',
-          { okText: 'โหลดมาแก้ไข', cancelText: 'ไม่ ใช้ที่กรอกไว้' });
-        if (yes) applySession(session);
-      }
-      refresh();
+      state.serverSession = session || null;
+      MR.el('#editBanner').hidden = !session;
     } catch (err) {
-      refresh();   // อ่านไม่ได้ก็ให้ใช้งานต่อได้ ไม่ต้องบล็อก
+      // อ่านไม่ได้ก็ให้กรอกต่อได้ — server เป็นด่านตัดสินอยู่แล้ว
     }
-  }
-
-  function applySession(session) {
-    state.buyIn = MR.num(session.buyIn);
-    MR.el('#buyInInput').value = state.buyIn;
-    state.rows = session.rows.map(function (r) {
-      var row = newRow(r.player);
-      // Sheet เก็บเฉพาะยอดรวมที่เติม จึงยุบเป็นรายการเดียว
-      if (MR.num(r.rebuy)) row.rebuys.push({ unit: MR.num(r.rebuy), count: 1 });
-      row.cashOut = MR.num(r.cashOut);
-      row.adjust = MR.num(r.adjust);
-      return row;
-    });
-    renderPicker();
-    renderRows();
     refresh();
   }
 
@@ -456,11 +439,15 @@
     if (state.rows.length < 2) { MR.toast('ต้องมีผู้เล่นอย่างน้อย 2 คน', 'error'); return; }
 
     if (state.serverSession) {
-      var ok = await MR.confirm(
-        'วันที่ ' + MR.dateLabel(state.date) + ' มีข้อมูลอยู่แล้ว — การบันทึกจะเขียนทับของเดิมทั้งหมด',
-        { okText: 'เขียนทับ', danger: true });
-      if (!ok) return;
+      MR.toast('วันที่ ' + MR.dateLabel(state.date) + ' บันทึกไปแล้ว — บันทึกซ้ำไม่ได้', 'error');
+      return;
     }
+
+    var confirmed = await MR.confirm(
+      'บันทึกวันที่ ' + MR.dateLabel(state.date) + ' จำนวน ' + state.rows.length + ' คน\n\n' +
+      'เมื่อบันทึกแล้วจะแก้หรือลบผ่านแอปไม่ได้อีก ตรวจตัวเลขให้ครบก่อนกดยืนยัน',
+      { okText: 'ยืนยันบันทึก' });
+    if (!confirmed) return;
 
     var btn = MR.el('#saveBtn');
     var label = MR.el('#saveLabel');
@@ -508,16 +495,8 @@
     var dateInput = MR.el('#dateInput');
     var buyInInput = MR.el('#buyInInput');
 
-    // มาจากปุ่ม "แก้ไข" ในหน้าสรุปผล — เปิดที่วันนั้นแล้วดึงข้อมูลเดิมมาให้เลย
-    var openDate = null;
-    try {
-      openDate = localStorage.getItem('mr.openDate');
-      if (openDate) localStorage.removeItem('mr.openDate');
-    } catch (e) { /* ignore */ }
-
     // กู้ร่างที่ค้างไว้
-    var draft = openDate ? null : loadDraft();
-    if (openDate) state.date = openDate;
+    var draft = loadDraft();
     if (draft) {
       state.date = draft.date || state.date;
       state.buyIn = MR.num(draft.buyIn) || CFG.DEFAULT_BUY_IN;
@@ -536,7 +515,7 @@
 
     dateInput.addEventListener('change', function () {
       state.date = this.value || MR.todayISO();
-      checkExistingSession(true);
+      checkExistingSession();
       saveDraft();
     });
 
@@ -579,17 +558,7 @@
     if (MR.API.isConfigured()) {
       loadPlayers().then(function () {
         renderPicker();
-        // มีร่างค้างอยู่ = อย่าถามทับ; มาจากปุ่มแก้ไข = โหลดของเดิมมาเลย
-        if (openDate) {
-          MR.API.getSession(state.date).then(function (session) {
-            state.serverSession = session;
-            MR.el('#editBanner').hidden = !session;
-            if (session) applySession(session);
-            refresh();
-          }).catch(function () { refresh(); });
-        } else {
-          checkExistingSession(!draft);
-        }
+        checkExistingSession();
       });
     }
   }
