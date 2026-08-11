@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<title>บันทึกยอดประจำวัน · Money Result</title>
+
+<!-- เปิดจากไอคอนหน้าจอโฮมบน iPhone ให้เต็มจอเหมือนแอป -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Money Result">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  corePlugins: { preflight: true },
+  theme: {
+    extend: {
+      colors: {
+        page:    'var(--page)',
+        surface: 'var(--surface-1)',
+        raised:  'var(--surface-2)',
+        ink:     'var(--ink)',
+        ink2:    'var(--ink-2)',
+        muted:   'var(--muted)',
+        line:    'var(--border)',
+        pos:    { DEFAULT: 'var(--pos)', text: 'var(--pos-text)', wash: 'var(--pos-wash)' },
+        neg:    { DEFAULT: 'var(--neg)', text: 'var(--neg-text)', wash: 'var(--neg-wash)' },
+        warn:   { DEFAULT: 'var(--warn)', text: 'var(--warn-text)', wash: 'var(--warn-wash)' },
+        accent: { DEFAULT: 'var(--accent)', ink: 'var(--accent-ink)', wash: 'var(--accent-wash)' }
+      },
+      fontFamily: {
+        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Noto Sans Thai', 'Sarabun', 'sans-serif']
+      }
+    }
+  }
+}
+</script>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+</head>
+
+<body data-page="ledger" class="min-h-screen">
+
+<!-- ══════════════════ Header ══════════════════ -->
+<header class="app-header sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-line">
+  <div class="mx-auto max-w-3xl safe-x h-14 flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2 min-w-0 shrink-0">
+      <span class="text-xl" aria-hidden="true">💰</span>
+      <span class="font-semibold truncate hidden sm:inline">Money Result</span>
+    </div>
+    <nav class="flex items-center gap-0.5">
+      <a href="index.html" data-nav="ledger" class="px-2.5 py-2 rounded-lg text-sm whitespace-nowrap">บันทึกยอด</a>
+      <a href="dashboard.html" data-nav="dashboard" class="px-2.5 py-2 rounded-lg text-sm whitespace-nowrap">สรุปผล</a>
+      <button id="themeToggle" class="btn btn-ghost btn-sm" type="button">🖥️</button>
+      <button id="settingsBtn" class="btn btn-ghost btn-sm" type="button" title="ตั้งค่า API" aria-label="ตั้งค่า API">⚙️</button>
+    </nav>
+  </div>
+</header>
+
+<main class="mx-auto max-w-3xl safe-x pt-4 pb-44 space-y-4">
+
+  <!-- แจ้งเตือนเมื่อยังไม่ได้ตั้งค่า API -->
+  <div id="setupBanner" hidden class="card" style="border-color:var(--warn);background:var(--warn-wash)">
+    <p class="font-semibold mb-1">⚠️ ยังไม่ได้เชื่อมต่อฐานข้อมูล</p>
+    <p class="text-sm text-ink2 mb-3">ตั้งค่า Web app URL ของ Google Apps Script ก่อนเริ่มใช้งาน (ดูขั้นตอนใน README.md)</p>
+    <button class="btn btn-primary btn-sm" onclick="MR.openSettings()">ตั้งค่าเลย</button>
+  </div>
+
+  <!-- ══════════════════ 1. ตั้งค่าวง ══════════════════ -->
+  <section class="card" aria-labelledby="setupTitle">
+    <h2 id="setupTitle" class="font-semibold mb-3">ตั้งค่าวง</h2>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="label" for="dateInput">วันที่</label>
+        <input id="dateInput" class="field field-lg" type="date">
+      </div>
+      <div>
+        <label class="label" for="buyInInput">Buy In เริ่มต้น (ทุกคนเท่ากัน)</label>
+        <input id="buyInInput" class="field field-lg num" type="number" inputmode="decimal" min="0" step="10">
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="label !mb-0">ผู้เข้าร่วม (<span id="selectedCount">0</span> คน)</span>
+        <div class="flex gap-1">
+          <button id="selectAllBtn" class="btn btn-ghost btn-sm" type="button">เลือกทั้งหมด</button>
+          <button id="clearAllBtn"  class="btn btn-ghost btn-sm" type="button">ล้าง</button>
+        </div>
+      </div>
+      <div id="playerPicker" class="flex flex-wrap gap-2" role="group" aria-label="เลือกผู้เข้าร่วม">
+        <span class="text-sm text-muted">กำลังโหลดรายชื่อ…</span>
+      </div>
+      <p class="text-xs text-muted mt-2">
+        เพิ่ม/ลบรายชื่อได้ที่หน้า <a href="dashboard.html" class="underline">สรุปผล</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- แจ้งว่ากำลังแก้ไขข้อมูลเดิมของวันนี้ -->
+  <div id="editBanner" hidden class="card !py-3" style="border-color:var(--accent);background:var(--accent-wash)">
+    <p class="text-sm">📝 วันที่นี้มีข้อมูลบันทึกไว้แล้ว — โหลดขึ้นมาให้แก้ไข <b>การบันทึกจะเขียนทับของเดิม</b></p>
+  </div>
+
+  <!-- ══════════════════ 2. รายคน ══════════════════ -->
+  <section id="rowsWrap" class="space-y-3" aria-label="รายละเอียดผู้เล่น"></section>
+
+  <p id="emptyHint" class="text-center text-sm text-muted py-8">
+    เลือกผู้เข้าร่วมด้านบนเพื่อเริ่มบันทึกยอด
+  </p>
+
+  <!-- ══════════════════ 3. เกลี่ยยอด ══════════════════ -->
+  <section id="reconSection" hidden class="card" style="border-color:var(--warn)" aria-labelledby="reconTitle">
+    <div class="flex items-start justify-between gap-3 mb-1">
+      <h2 id="reconTitle" class="font-semibold">⚖️ เกลี่ยยอดให้ลงตัว</h2>
+      <span class="text-xs text-muted">ต้องรวมได้ 0 ถึงจะบันทึกได้</span>
+    </div>
+
+    <p class="text-sm text-ink2 mb-3">
+      ตอนนี้ยอดรวมสุทธิเท่ากับ <b id="reconCurrent" class="num">0</b> —
+      ต้องกระจายอีก <b id="reconNeed" class="num">0</b> ให้คนที่เลือก
+      <span id="reconDirection" class="text-xs"></span>
+    </p>
+
+    <div class="flex flex-wrap gap-2 mb-3">
+      <button id="reconSelectAll" class="btn btn-sm" type="button">เลือกทุกคน</button>
+      <button id="reconAuto"      class="btn btn-primary btn-sm" type="button">เกลี่ยให้คนที่เลือก</button>
+      <button id="reconClear"     class="btn btn-sm btn-danger" type="button">ล้างค่าเกลี่ย</button>
+    </div>
+
+    <div id="reconList" class="space-y-1"></div>
+
+    <p class="text-xs text-muted mt-3">
+      ระบบแบ่งเท่า ๆ กันก่อน ถ้าหารไม่ลงตัวจะปัดเศษไปที่คนแรก ๆ ตามลำดับ
+      (เช่น +20 หาร 3 คน → −7, −7, −6) และแก้ตัวเลขเองได้ทุกช่อง
+    </p>
+  </section>
+
+</main>
+
+<!-- ══════════════════ แถบสรุป + ปุ่มบันทึก ══════════════════ -->
+<div class="sticky-bar">
+  <div class="mx-auto max-w-3xl safe-x">
+    <div class="grid grid-cols-3 gap-2 mb-2.5 text-center">
+      <div>
+        <div class="text-[11px] text-muted">รวม Buy In</div>
+        <div id="sumBuyIn" class="text-sm font-semibold num">0</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-muted">รวมเงินคงเหลือ</div>
+        <div id="sumCashOut" class="text-sm font-semibold num">0</div>
+      </div>
+      <div>
+        <div class="text-[11px] text-muted">ส่วนต่าง</div>
+        <div id="sumDiff" class="text-sm font-semibold num">0</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div id="statusPill" class="flex-1 min-w-0 rounded-lg px-3 py-2 text-sm font-semibold truncate"
+           style="background:var(--warn-wash);color:var(--warn-text)">
+        เลือกผู้เข้าร่วมก่อน
+      </div>
+      <button id="saveBtn" class="btn btn-primary" type="button" disabled>
+        <span id="saveLabel">บันทึก</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/ledger.js"></script>
+</body>
+</html>

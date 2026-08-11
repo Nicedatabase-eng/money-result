@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<title>สรุปผล · Money Result</title>
+
+<!-- เปิดจากไอคอนหน้าจอโฮมบน iPhone ให้เต็มจอเหมือนแอป -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Money Result">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  corePlugins: { preflight: true },
+  theme: {
+    extend: {
+      colors: {
+        page:    'var(--page)',
+        surface: 'var(--surface-1)',
+        raised:  'var(--surface-2)',
+        ink:     'var(--ink)',
+        ink2:    'var(--ink-2)',
+        muted:   'var(--muted)',
+        line:    'var(--border)',
+        pos:    { DEFAULT: 'var(--pos)', text: 'var(--pos-text)', wash: 'var(--pos-wash)' },
+        neg:    { DEFAULT: 'var(--neg)', text: 'var(--neg-text)', wash: 'var(--neg-wash)' },
+        warn:   { DEFAULT: 'var(--warn)', text: 'var(--warn-text)', wash: 'var(--warn-wash)' },
+        accent: { DEFAULT: 'var(--accent)', ink: 'var(--accent-ink)', wash: 'var(--accent-wash)' }
+      },
+      fontFamily: {
+        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Noto Sans Thai', 'Sarabun', 'sans-serif']
+      }
+    }
+  }
+}
+</script>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+</head>
+
+<body data-page="dashboard" class="min-h-screen">
+
+<header class="app-header sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-line">
+  <div class="mx-auto max-w-5xl safe-x h-14 flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2 min-w-0 shrink-0">
+      <span class="text-xl" aria-hidden="true">💰</span>
+      <span class="font-semibold truncate hidden sm:inline">Money Result</span>
+    </div>
+    <nav class="flex items-center gap-0.5">
+      <a href="index.html" data-nav="ledger" class="px-2.5 py-2 rounded-lg text-sm whitespace-nowrap">บันทึกยอด</a>
+      <a href="dashboard.html" data-nav="dashboard" class="px-2.5 py-2 rounded-lg text-sm whitespace-nowrap">สรุปผล</a>
+      <button id="themeToggle" class="btn btn-ghost btn-sm" type="button">🖥️</button>
+      <button id="settingsBtn" class="btn btn-ghost btn-sm" type="button" title="ตั้งค่า API" aria-label="ตั้งค่า API">⚙️</button>
+    </nav>
+  </div>
+</header>
+
+<main class="mx-auto max-w-5xl safe-x pt-4 pb-[max(4rem,calc(env(safe-area-inset-bottom)+3rem))] space-y-4">
+
+  <div id="setupBanner" hidden class="card" style="border-color:var(--warn);background:var(--warn-wash)">
+    <p class="font-semibold mb-1">⚠️ ยังไม่ได้เชื่อมต่อฐานข้อมูล</p>
+    <p class="text-sm text-ink2 mb-3">ตั้งค่า Web app URL ของ Google Apps Script ก่อนเริ่มใช้งาน (ดูขั้นตอนใน README.md)</p>
+    <button class="btn btn-primary btn-sm" onclick="MR.openSettings()">ตั้งค่าเลย</button>
+  </div>
+
+  <!-- ══════════════════ ตัวกรองช่วงเวลา ══════════════════ -->
+  <section class="card" aria-labelledby="filterTitle">
+    <div class="flex items-center flex-wrap justify-between gap-2 mb-3">
+      <h2 id="filterTitle" class="font-semibold">ช่วงเวลา</h2>
+      <div class="flex gap-1 ml-auto">
+        <button id="filterAll"    class="btn btn-ghost btn-sm" type="button">ทั้งหมด</button>
+        <button id="filterRecent" class="btn btn-ghost btn-sm" type="button">3 เดือน</button>
+        <button id="refreshBtn"   class="btn btn-ghost btn-sm" type="button" title="โหลดข้อมูลใหม่" aria-label="โหลดข้อมูลใหม่">↻</button>
+      </div>
+    </div>
+    <div id="monthPicker" class="flex flex-wrap gap-2" role="group" aria-label="เลือกเดือน">
+      <span class="text-sm text-muted">กำลังโหลด…</span>
+    </div>
+  </section>
+
+  <!-- ══════════════════ Stat tiles ══════════════════ -->
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-3" aria-label="ภาพรวม">
+    <div class="card !p-3.5">
+      <div class="text-xs text-muted mb-1">จำนวนวันที่เล่น</div>
+      <div id="statSessions" class="text-xl sm:text-2xl font-semibold">–</div>
+    </div>
+    <div class="card !p-3.5">
+      <div class="text-xs text-muted mb-1">ผู้เล่นที่ลงวง</div>
+      <div id="statPlayers" class="text-xl sm:text-2xl font-semibold">–</div>
+    </div>
+    <div class="card !p-3.5">
+      <div class="text-xs text-muted mb-1">เงินหมุนเวียนรวม</div>
+      <div id="statVolume" class="text-xl sm:text-2xl font-semibold truncate">–</div>
+      <div class="text-[11px] text-muted mt-0.5">ผลรวมของยอดที่ชนะทั้งหมด</div>
+    </div>
+    <div class="card !p-3.5">
+      <div class="text-xs text-muted mb-1">ผู้นำสะสม</div>
+      <div id="statLeader" class="text-lg font-semibold truncate">–</div>
+      <div id="statLeaderNet" class="text-sm num mt-0.5">–</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════ กราฟ ══════════════════ -->
+  <section class="card" aria-labelledby="chartTitle">
+    <div class="flex items-start justify-between gap-3 mb-1">
+      <div>
+        <h2 id="chartTitle" class="font-semibold">ยอดสุทธิสะสมรายคน</h2>
+        <p id="chartSubtitle" class="text-xs text-muted mt-0.5">–</p>
+      </div>
+      <div class="flex items-center gap-3 text-xs shrink-0" aria-hidden="true">
+        <span class="flex items-center gap-1.5">
+          <span style="width:10px;height:10px;border-radius:2px;background:var(--pos);display:inline-block"></span>
+          <span class="text-ink2">ได้</span>
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span style="width:10px;height:10px;border-radius:2px;background:var(--neg);display:inline-block"></span>
+          <span class="text-ink2">เสีย</span>
+        </span>
+      </div>
+    </div>
+    <div id="chartWrap" class="mt-3 overflow-x-auto"></div>
+  </section>
+
+  <!-- ══════════════════ ตารางสรุป ══════════════════ -->
+  <section class="card" aria-labelledby="tableTitle">
+    <h2 id="tableTitle" class="font-semibold mb-3">ตารางสรุป</h2>
+    <p class="text-xs text-muted mb-2 sm:hidden">← เลื่อนตารางแนวนอนเพื่อดูคอลัมน์อื่น</p>
+    <div class="overflow-x-auto">
+      <table class="table-sticky w-full text-sm min-w-[34rem]">
+        <thead>
+          <tr class="text-xs text-muted border-b border-line">
+            <th class="text-left font-medium py-2 pr-3">ผู้เล่น</th>
+            <th class="text-right font-medium py-2 px-2">ลงเล่น</th>
+            <th class="text-right font-medium py-2 px-2">ได้ / เสีย</th>
+            <th class="text-right font-medium py-2 px-2">เฉลี่ย/วัน</th>
+            <th class="text-right font-medium py-2 px-2">ดีสุด</th>
+            <th class="text-right font-medium py-2 px-2">แย่สุด</th>
+            <th class="text-right font-medium py-2 pl-2">สุทธิ</th>
+          </tr>
+        </thead>
+        <tbody id="summaryBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="grid lg:grid-cols-2 gap-4">
+
+    <!-- ══════════════════ ประวัติรายวัน ══════════════════ -->
+    <section class="card" aria-labelledby="histTitle">
+      <h2 id="histTitle" class="font-semibold mb-3">ประวัติรายวัน</h2>
+      <div id="sessionList" class="space-y-2 max-h-[28rem] overflow-y-auto pr-1"></div>
+    </section>
+
+    <!-- ══════════════════ จัดการผู้เล่น ══════════════════ -->
+    <section class="card" aria-labelledby="pmTitle">
+      <h2 id="pmTitle" class="font-semibold mb-1">จัดการผู้เล่น</h2>
+      <p class="text-xs text-muted mb-3">รายชื่อที่เพิ่มจะไปแสดงในหน้าบันทึกยอดทันที</p>
+
+      <form id="addPlayerForm" class="flex gap-2 mb-4">
+        <input id="newPlayerName" class="field" type="text" maxlength="40" required
+               placeholder="ชื่อผู้เล่นใหม่" autocomplete="off">
+        <button class="btn btn-primary shrink-0" type="submit">เพิ่ม</button>
+      </form>
+
+      <div id="playerAdmin" class="space-y-1.5 max-h-[22rem] overflow-y-auto pr-1"></div>
+    </section>
+
+  </div>
+</main>
+
+<div id="chartTooltip" class="chart-tooltip" role="tooltip"></div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

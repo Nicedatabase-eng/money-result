@@ -1,0 +1,452 @@
+/* ==========================================================================
+   Money Result — design tokens + component styles
+   สีทั้งหมดผ่านการตรวจ contrast / colour-vision-deficiency แล้วทั้งโหมดสว่างและมืด
+   ปรับมาเพื่อใช้งานบนมือถือเป็นหลัก (iPhone / Safari)
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --page:       #f9f9f7;
+  --surface-1:  #fcfcfb;
+  --surface-2:  #ffffff;
+
+  --ink:        #0b0b0b;
+  --ink-2:      #52514e;
+  --muted:      #898781;
+
+  --border:     rgba(11, 11, 11, 0.10);
+  --grid:       #e1e0d9;
+  --axis:       #c3c2b7;
+
+  /* ขั้วบวก/ลบ (diverging: น้ำเงิน ↔ แดง — ปลอดภัยกับตาบอดสี ต่างจากเขียว/แดง) */
+  --pos:        #2a78d6;   /* ใช้กับแท่งกราฟ */
+  --pos-text:   #1c5cab;   /* ใช้กับตัวหนังสือ (ผ่าน AA 6.46:1) */
+  --pos-wash:   rgba(42, 120, 214, 0.10);
+
+  --neg:        #e34948;
+  --neg-text:   #d03b3b;   /* ผ่าน AA 4.68:1 */
+  --neg-wash:   rgba(227, 73, 72, 0.10);
+
+  --accent:     #2a78d6;
+  --accent-ink: #ffffff;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+
+  --warn:       #fab219;
+  --warn-text:  #8a5a00;
+  --warn-wash:  rgba(250, 178, 25, 0.14);
+
+  --good:       #0ca30c;
+  --good-text:  #006300;
+
+  /* ขนาดพื้นที่กดขั้นต่ำตาม Apple HIG */
+  --tap: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --page:       #0d0d0d;
+    --surface-1:  #1a1a19;
+    --surface-2:  #212120;
+
+    --ink:        #ffffff;
+    --ink-2:      #c3c2b7;
+    --muted:      #898781;
+
+    --border:     rgba(255, 255, 255, 0.10);
+    --grid:       #2c2c2a;
+    --axis:       #383835;
+
+    --pos:        #3987e5;
+    --pos-text:   #5598e7;
+    --pos-wash:   rgba(57, 135, 229, 0.14);
+
+    --neg:        #e66767;
+    --neg-text:   #e66767;
+    --neg-wash:   rgba(230, 103, 103, 0.14);
+
+    --accent:     #3987e5;
+    --accent-ink: #0d0d0d;
+    --accent-wash: rgba(57, 135, 229, 0.14);
+
+    --warn:       #fab219;
+    --warn-text:  #fab219;
+    --warn-wash:  rgba(250, 178, 25, 0.14);
+
+    --good:       #0ca30c;
+    --good-text:  #0ca30c;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page:       #0d0d0d;
+  --surface-1:  #1a1a19;
+  --surface-2:  #212120;
+
+  --ink:        #ffffff;
+  --ink-2:      #c3c2b7;
+  --muted:      #898781;
+
+  --border:     rgba(255, 255, 255, 0.10);
+  --grid:       #2c2c2a;
+  --axis:       #383835;
+
+  --pos:        #3987e5;
+  --pos-text:   #5598e7;
+  --pos-wash:   rgba(57, 135, 229, 0.14);
+
+  --neg:        #e66767;
+  --neg-text:   #e66767;
+  --neg-wash:   rgba(230, 103, 103, 0.14);
+
+  --accent:     #3987e5;
+  --accent-ink: #0d0d0d;
+  --accent-wash: rgba(57, 135, 229, 0.14);
+
+  --warn:       #fab219;
+  --warn-text:  #fab219;
+  --warn-wash:  rgba(250, 178, 25, 0.14);
+
+  --good:       #0ca30c;
+  --good-text:  #0ca30c;
+}
+
+/* ==========================================================================
+   พื้นฐาน + การจูนสำหรับ iOS
+   ========================================================================== */
+
+html {
+  -webkit-text-size-adjust: 100%;   /* กัน Safari ขยายฟอนต์เองตอนหมุนจอ */
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Thai", "Sarabun", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;               /* กันจอกระตุกเวลาแถบ URL ของ Safari ยุบ/ขยาย */
+}
+
+/* ไม่ให้ขึ้นกรอบเทาตอนแตะ และไม่ให้เด้งเมนู copy ตอนกดค้างบนปุ่ม */
+* { -webkit-tap-highlight-color: transparent; }
+
+button,
+.chip,
+a[href],
+label,
+summary {
+  -webkit-touch-callout: none;
+  touch-action: manipulation;       /* ตัด delay 300ms และกัน double-tap zoom */
+}
+
+/* ปุ่มไม่ควรลากเลือกข้อความได้ แต่ตัวเลข/ชื่อในตารางต้องเลือกได้ */
+button, .chip { user-select: none; -webkit-user-select: none; }
+
+/* กล่องที่เลื่อนได้ — เลื่อนแบบมีแรงเฉื่อย และไม่ลามไปเลื่อนทั้งหน้า */
+.overflow-y-auto,
+.overflow-x-auto,
+.modal-panel {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* เผื่อพื้นที่ปลอดภัยด้านข้าง (จำเป็นตอนตะแคงจอบนเครื่องที่มีรอยบาก) */
+.safe-x {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* หัวเว็บต้องหลบ Dynamic Island / notch ตอนเปิดจากไอคอนหน้าจอโฮม */
+.app-header { padding-top: env(safe-area-inset-top); }
+
+/* ซ่อนลูกศรขึ้น/ลงของ input number — เกะกะบนมือถือ */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type="number"] { -moz-appearance: textfield; }
+
+/* ==========================================================================
+   คอมโพเนนต์
+   ========================================================================== */
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+/*  ⚠️ font-size ต้องไม่ต่ำกว่า 16px มิฉะนั้น Safari บน iPhone
+    จะซูมหน้าจอเข้าเองทุกครั้งที่โฟกัสช่องกรอก แล้วซูมไม่กลับ  */
+.field {
+  width: 100%;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  font-size: 16px;
+  line-height: 1.35;
+  min-height: var(--tap);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+.field-lg { font-size: 17px; font-weight: 600; padding: 0.6rem 0.8rem; }
+
+/* ช่องกรอกเล็กในบรรทัด — ย่อได้แต่ font ยังต้อง 16px */
+.field-inline {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.35rem 0.5rem;
+  font-size: 16px;
+  text-align: center;
+}
+
+input[type="date"].field {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: var(--tap);
+}
+
+.label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  border-radius: 10px; padding: 0.5rem 0.9rem;
+  min-height: var(--tap);
+  font-size: 0.9rem; font-weight: 600; line-height: 1.2;
+  border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--ink);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, opacity .15s, transform .05s;
+}
+.btn:hover  { border-color: var(--axis); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:disabled:active { transform: none; }
+
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn-primary:hover { filter: brightness(1.06); }
+
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 8px; min-height: 36px; }
+.btn-danger { color: var(--neg-text); }
+.btn-danger:hover { background: var(--neg-wash); border-color: var(--neg); }
+
+/* ปุ่มเติมเงิน — ใช้บ่อยที่สุดระหว่างเกม จึงทำให้กดง่ายที่สุด */
+.btn-add {
+  background: var(--accent-wash);
+  border-color: transparent;
+  color: var(--pos-text);
+  font-size: 1rem;
+  font-weight: 700;
+  min-height: 48px;
+  font-variant-numeric: tabular-nums;
+}
+.btn-add:active { background: var(--accent); color: var(--accent-ink); }
+
+/* ตัวเพิ่ม/ลดจำนวนครั้ง — กดง่ายกว่าพิมพ์บนมือถือ */
+.stepper {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-2); overflow: hidden;
+}
+.stepper button {
+  width: 40px; min-height: 40px;
+  font-size: 1.15rem; font-weight: 600; line-height: 1;
+  color: var(--ink-2); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.stepper button:active { background: var(--accent-wash); }
+.stepper input {
+  width: 44px; min-height: 40px;
+  border: 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  background: transparent; color: var(--ink);
+  text-align: center; font-size: 16px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  outline: none; -webkit-appearance: none; appearance: none;
+}
+
+/* ปุ่มเลือกผู้เล่น / เลือกเดือน (toggle chip) */
+.chip {
+  display: inline-flex; align-items: center;
+  border-radius: 999px; padding: 0.4rem 0.9rem;
+  min-height: 42px;
+  font-size: 0.9rem; font-weight: 500;
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-2);
+  cursor: pointer; transition: all .15s;
+}
+.chip:hover { border-color: var(--axis); }
+.chip:active { transform: scale(.97); }
+.chip[aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-ink);
+  border-color: transparent; font-weight: 600;
+}
+
+/* ป้าย buy-in ที่เติมระหว่างเกม */
+.rebuy-chip {
+  display: inline-flex; align-items: center; gap: 0.15rem;
+  border-radius: 999px; padding: 0.2rem 0.25rem 0.2rem 0.6rem;
+  font-size: 0.8rem; font-weight: 600;
+  background: var(--accent-wash); color: var(--ink-2);
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.rebuy-chip button {
+  width: 26px; height: 26px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 1rem; line-height: 1; cursor: pointer;
+}
+.rebuy-chip button:active { background: var(--neg-wash); color: var(--neg-text); }
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* บนอุปกรณ์สัมผัส ขยายพื้นที่กดของปุ่มรองให้ถึงเกณฑ์ */
+@media (pointer: coarse) {
+  .btn-sm { min-height: 40px; min-width: 40px; }
+  .rebuy-chip button { width: 30px; height: 30px; }
+}
+
+/* ==========================================================================
+   ตาราง
+   ========================================================================== */
+
+/* บนจอแคบ ตารางเลื่อนแนวนอนได้ แต่ตรึงคอลัมน์ชื่อไว้ให้เห็นตลอด */
+.table-sticky th:first-child,
+.table-sticky td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--surface-1);
+  z-index: 1;
+}
+.table-sticky th:first-child::after,
+.table-sticky td:first-child::after {
+  content: '';
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 1px; background: var(--border);
+}
+
+/* ==========================================================================
+   กราฟ
+   ========================================================================== */
+
+.chart-tooltip {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  background: var(--surface-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .1s;
+}
+.chart-tooltip[data-show="true"] { opacity: 1; }
+
+.chart-hit { fill: transparent; cursor: pointer; }
+.chart-hit:hover + .chart-bar { filter: brightness(1.12); }
+.chart-hit[data-active="true"] + .chart-bar { filter: brightness(1.2); }
+
+/* ==========================================================================
+   toast
+   ========================================================================== */
+
+#toastHost {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 6.5rem));
+  z-index: 80; display: flex; flex-direction: column; gap: 0.5rem;
+  align-items: center; width: max-content; max-width: min(92vw, 30rem);
+  pointer-events: none;
+}
+.toast {
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--border); border-left-width: 4px;
+  border-radius: 10px; padding: 0.6rem 0.9rem;
+  font-size: 0.875rem; font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  animation: toast-in .18s ease-out;
+}
+.toast[data-kind="error"]   { border-left-color: var(--neg); }
+.toast[data-kind="success"] { border-left-color: var(--good); }
+.toast[data-kind="info"]    { border-left-color: var(--accent); }
+.toast[data-kind="warn"]    { border-left-color: var(--warn); }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ==========================================================================
+   modal
+   ========================================================================== */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 70;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+}
+.modal-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%; max-width: 32rem;
+  max-height: 85vh; max-height: 85dvh; overflow-y: auto;
+  padding: 1.25rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+/* บนมือถือให้ modal ชิดล่างแบบ sheet — นิ้วโป้งเอื้อมถึงปุ่มง่ายกว่า */
+@media (max-width: 640px) {
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal-panel {
+    border-radius: 18px 18px 0 0;
+    max-width: none;
+    max-height: 90dvh;
+    padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+    animation: sheet-up .22s cubic-bezier(.32, .72, 0, 1);
+  }
+  @keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+}
+
+/* ==========================================================================
+   แถบสรุปติดล่างจอ
+   ========================================================================== */
+
+.sticky-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border);
+  padding-top: 0.7rem;
+  padding-bottom: max(0.7rem, calc(env(safe-area-inset-bottom) + 0.35rem));
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.10);
+}
+
+[hidden] { display: none !important; }
+
+.spinner {
+  width: 1rem; height: 1rem; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@media print {
+  .sticky-bar, header nav, .no-print { display: none !important; }
+}
