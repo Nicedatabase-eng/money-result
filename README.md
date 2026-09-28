@@ -410,7 +410,7 @@ npm run build:css    # สร้าง css/tailwind.css ใหม่ แล้�
 
 ภาพ "Money with Wings" จาก [Fluent Emoji](https://github.com/microsoft/fluentui-emoji)
 © Microsoft Corporation — ใช้ภายใต้ [MIT License](https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE)
-วางบนพื้นสี `#2a78d6` (สี accent ของแอป) ขนาด 66% ของไอคอน
+ตัดขอบโปร่งใสออก แล้ววางบนพื้นขาว ขนาด 80% ของไอคอน
 
 > iPhone เก็บไอคอนไว้ตอนกด "เพิ่มไปยังหน้าจอโฮม" — เปลี่ยนไอคอนแล้วต้องลบไอคอนเดิมออกแล้วเพิ่มใหม่
 
