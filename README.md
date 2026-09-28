@@ -22,9 +22,9 @@ Money Result/
 │   ├── style.css         # design tokens (สี light/dark) + คอมโพเนนต์
 │   ├── tailwind.src.css  # ต้นฉบับ Tailwind
 │   └── tailwind.css      # ไฟล์ที่สร้างแล้ว — commit ไว้เพราะ GitHub Pages ไม่มีขั้นตอน build
-├── icons/
+├── icons/                # ไอคอนแอป + favicon (พื้นทึบ — iOS เปลี่ยนส่วนโปร่งใสเป็นสีดำ)
 │   ├── icon-180.png      # apple-touch-icon (iOS ต้องเป็น PNG เท่านั้น)
-│   ├── icon-192.png
+│   ├── icon-192.png      # favicon + Android
 │   └── icon-512.png
 ├── js/
 │   ├── config.js         # ตั้งค่า API URL, ปุ่มเติมเงิน, Buy In เริ่มต้น
@@ -403,6 +403,16 @@ npm run build:css    # สร้าง css/tailwind.css ใหม่ แล้�
 ```
 
 ถ้าลืม build class ใหม่จะไม่มีผล (หน้าตาเพี้ยน) — แก้แค่ `css/style.css` ไม่ต้อง build
+
+---
+
+## 🖼 ไอคอนแอป
+
+ภาพ "Money with Wings" จาก [Fluent Emoji](https://github.com/microsoft/fluentui-emoji)
+© Microsoft Corporation — ใช้ภายใต้ [MIT License](https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE)
+วางบนพื้นสี `#2a78d6` (สี accent ของแอป) ขนาด 66% ของไอคอน
+
+> iPhone เก็บไอคอนไว้ตอนกด "เพิ่มไปยังหน้าจอโฮม" — เปลี่ยนไอคอนแล้วต้องลบไอคอนเดิมออกแล้วเพิ่มใหม่
 
 ---
 
