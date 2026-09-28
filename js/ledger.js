@@ -524,35 +524,51 @@
 
   /* ============================ โหลด / บันทึก ============================ */
 
-  async function loadPlayers() {
+  function applySession(session) {
+    state.serverSession = session || null;
+    MR.el('#editBanner').hidden = !session;
+    refresh();
+  }
+
+  /**
+   * เปิดหน้า: แสดงรายชื่อจาก cache ทันที แล้วขอรายชื่อล่าสุด + ข้อมูลของวันที่เลือก
+   * ในการเรียก server ครั้งเดียว (แต่ละครั้งของ Apps Script ใช้เวลาราว 1 วินาที)
+   */
+  async function initialLoad() {
     var cached = MR.API.cachedPlayers();
     if (cached) { state.players = cached; playersLoaded = true; renderPicker(); }
+
+    var date = state.date;
     try {
-      state.players = await MR.API.getPlayers();
+      var data = await MR.API.ledgerInit(date);
+      state.players = data.players || [];
       playersLoaded = true;
       renderPicker();
+      // ผู้ใช้อาจเปลี่ยนวันที่ระหว่างรอ — ผลของวันเก่าไม่ต้องใช้
+      if (date === state.date) applySession(data.session);
     } catch (err) {
       if (!cached) MR.el('#playerPicker').innerHTML =
         '<span class="text-sm text-neg-text">โหลดรายชื่อไม่สำเร็จ: ' + MR.escapeHtml(err.message) + '</span>';
       else MR.toast('โหลดรายชื่อล่าสุดไม่สำเร็จ ใช้ข้อมูลที่เก็บไว้แทน', 'warn');
+      // ตรวจวันที่ซ้ำไม่ได้ก็ให้กรอกต่อได้ — server เป็นด่านตัดสินตอนบันทึกอยู่แล้ว
     }
   }
 
   /**
-   * ตรวจว่าวันที่เลือกมีข้อมูลอยู่แล้วหรือไม่
+   * ตรวจว่าวันที่เลือกมีข้อมูลอยู่แล้วหรือไม่ (ตอนเปลี่ยนวันที่)
    * ถ้ามี = ล็อกไม่ให้บันทึกซ้ำ (ข้อมูลที่บันทึกแล้วเขียนทับไม่ได้)
    */
   async function checkExistingSession() {
+    var date = state.date;
     state.serverSession = null;
     MR.el('#editBanner').hidden = true;
+    refresh();
     try {
-      var session = await MR.API.getSession(state.date);
-      state.serverSession = session || null;
-      MR.el('#editBanner').hidden = !session;
+      var session = await MR.API.getSession(date);
+      if (date === state.date) applySession(session);
     } catch (err) {
       // อ่านไม่ได้ก็ให้กรอกต่อได้ — server เป็นด่านตัดสินอยู่แล้ว
     }
-    refresh();
   }
 
   async function save() {
@@ -689,12 +705,7 @@
     renderRows();
     refresh();
 
-    if (MR.API.isConfigured()) {
-      loadPlayers().then(function () {
-        renderPicker();
-        checkExistingSession();
-      });
-    }
+    if (MR.API.isConfigured()) initialLoad();
   }
 
   document.addEventListener('DOMContentLoaded', init);

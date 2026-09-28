@@ -1,0 +1,11 @@
+{
+  "name": "money-result",
+  "private": true,
+  "description": "เว็บบันทึกยอดเงินรายวัน (zero-sum) — static site บน GitHub Pages",
+  "scripts": {
+    "build:css": "tailwindcss -i css/tailwind.src.css -o css/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

@@ -485,22 +485,54 @@
     renderPlayerAdmin();
   }
 
-  async function load(showToast) {
-    var wrap = MR.el('#chartWrap');
-    wrap.innerHTML = '<div class="flex items-center justify-center gap-2 py-10 text-sm text-muted">' +
-                     '<span class="spinner"></span> กำลังโหลดข้อมูล…</div>';
+  function applyData(data) {
+    state.players = data.players || [];
+    state.records = data.records || [];
+    rebuildMonths();
+    renderMonthPicker();
+    renderAll();
+  }
+
+  var loading = false;
+
+  /**
+   * แสดงข้อมูลที่เก็บไว้ในเครื่องทันที แล้วค่อยดึงเฉพาะแถวใหม่มาเติม
+   * @param {{full?: boolean, showToast?: boolean}} opts full = โหลดทั้งหมดใหม่ (ปุ่ม ↻)
+   */
+  async function load(opts) {
+    var o = opts || {};
+    if (loading) return;
+    loading = true;
+
+    var btn = MR.el('#refreshBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+
+    var hasData = state.records.length > 0;
+    if (!hasData && !o.full) {
+      var cached = MR.API.cachedSnapshot();
+      if (cached && cached.records.length) { applyData(cached); hasData = true; }
+    }
+    if (!hasData) {
+      MR.el('#chartWrap').innerHTML = '<div class="flex items-center justify-center gap-2 py-10 text-sm text-muted">' +
+                                      '<span class="spinner"></span> กำลังโหลดข้อมูล…</div>';
+    }
+
     try {
-      var data = await MR.API.bootstrap();
-      state.players = data.players || [];
-      state.records = data.records || [];
-      rebuildMonths();
-      renderMonthPicker();
-      renderAll();
-      if (showToast) MR.toast('โหลดข้อมูลล่าสุดแล้ว', 'success');
+      applyData(await MR.API.syncRecords({ full: o.full }));
+      if (o.showToast) MR.toast('โหลดข้อมูลล่าสุดแล้ว', 'success');
     } catch (err) {
-      wrap.innerHTML = '<p class="text-sm py-8 text-center" style="color:var(--neg-text)">' +
-        'โหลดข้อมูลไม่สำเร็จ: ' + MR.escapeHtml(err.message) + '</p>';
-      MR.toast('โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+      if (hasData) {
+        MR.toast('อัปเดตข้อมูลล่าสุดไม่สำเร็จ — แสดงข้อมูลที่เก็บไว้: ' + err.message, 'warn');
+      } else {
+        MR.el('#chartWrap').innerHTML = '<p class="text-sm py-8 text-center" style="color:var(--neg-text)">' +
+          'โหลดข้อมูลไม่สำเร็จ: ' + MR.escapeHtml(err.message) + '</p>';
+        MR.toast('โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+      }
+    } finally {
+      loading = false;
+      btn.disabled = false;
+      btn.textContent = '↻';
     }
   }
 
@@ -522,7 +554,7 @@
       renderAll();
     });
 
-    MR.el('#refreshBtn').addEventListener('click', function () { load(true); });
+    MR.el('#refreshBtn').addEventListener('click', function () { load({ full: true, showToast: true }); });
     MR.el('#copySummaryBtn').addEventListener('click', copyCumulative);
 
     MR.el('#addPlayerForm').addEventListener('submit', async function (e) {
@@ -555,7 +587,7 @@
       resizeTimer = setTimeout(function () { renderChart(aggregate(visibleRecords())); }, 150);
     });
 
-    if (MR.API.isConfigured()) load(false);
+    if (MR.API.isConfigured()) load();
     else MR.el('#chartWrap').innerHTML =
       '<p class="text-sm text-muted py-8 text-center">ตั้งค่า API URL ก่อนเพื่อดูข้อมูล</p>';
   }

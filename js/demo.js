@@ -40,6 +40,18 @@
     });
   }
 
+  function sessionOf(date) {
+    var rows = records.filter(function (r) { return r.date === date; });
+    if (!rows.length) return null;
+    return {
+      sessionId: rows[0].sessionId, date: date, buyIn: rows[0].buyIn,
+      rows: rows.map(function (r) {
+        return { player: r.player, buyIn: r.buyIn, rebuy: r.rebuy,
+                 cashOut: r.cashOut, adjust: r.adjust, net: r.net };
+      })
+    };
+  }
+
   function delay(value, ms) {
     return new Promise(function (resolve) { setTimeout(function () { resolve(value); }, ms || 220); });
   }
@@ -50,7 +62,6 @@
 
     ping: function () { return delay({ pong: true, demo: true }); },
     cachedPlayers: function () { return players.slice(); },
-    getPlayers: function () { return delay(players.slice()); },
 
     addPlayer: function (name) {
       var n = String(name).trim();
@@ -62,22 +73,17 @@
       return delay({ id: p.id, name: p.name });
     },
 
-    bootstrap: function () {
+    ledgerInit: function (date) {
+      return delay({ players: players.slice(), session: sessionOf(date) });
+    },
+
+    // โหมดทดลองไม่ใช้ cache ในเครื่อง — กันข้อมูลจำลองไปปนกับข้อมูลจริง
+    cachedSnapshot: function () { return null; },
+    syncRecords: function () {
       return delay({ players: players.slice(), records: records.slice() }, 400);
     },
-    getRecords: function () { return delay(records.slice()); },
 
-    getSession: function (date) {
-      var rows = records.filter(function (r) { return r.date === date; });
-      if (!rows.length) return delay(null);
-      return delay({
-        sessionId: rows[0].sessionId, date: date, buyIn: rows[0].buyIn,
-        rows: rows.map(function (r) {
-          return { player: r.player, buyIn: r.buyIn, rebuy: r.rebuy,
-                   cashOut: r.cashOut, adjust: r.adjust, net: r.net };
-        })
-      });
-    },
+    getSession: function (date) { return delay(sessionOf(date)); },
 
     saveSession: function (session) {
       var total = session.rows.reduce(function (s, r) { return s + MR.num(r.net); }, 0);

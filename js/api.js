@@ -121,28 +121,84 @@ window.MR = window.MR || {};
     } catch (e) { /* ignore */ }
   }
 
+  /* ---------- cache ข้อมูลหน้าสรุปผล + ดึงเฉพาะแถวใหม่ ---------- */
+
+  var LS_RECORDS = 'mr.records';
+
+  /** @returns {{players, records, lastRow, anchor, fullAt}|null} */
+  function cachedSnapshot() {
+    try {
+      var s = JSON.parse(localStorage.getItem(LS_RECORDS) || 'null');
+      return s && Array.isArray(s.records) && Array.isArray(s.players) ? s : null;
+    } catch (e) { return null; }
+  }
+
+  function saveSnapshot(s) {
+    try { localStorage.setItem(LS_RECORDS, JSON.stringify(s)); }
+    catch (e) {
+      // พื้นที่เต็ม — ทิ้ง cache ไป ครั้งหน้าโหลดทั้งหมดใหม่ (ยังทำงานได้ปกติ แค่ไม่เร็ว)
+      try { localStorage.removeItem(LS_RECORDS); } catch (e2) { /* ignore */ }
+    }
+  }
+
+  /**
+   * ปกติขอเฉพาะแถวที่ต่อจากที่มีอยู่ (ชีต Records เขียนเพิ่มอย่างเดียว)
+   * แล้วต่อท้าย cache เดิม — server จะสั่ง reset ถ้าตรวจพบว่าชีตถูกแก้ด้วยมือ
+   *
+   * @param {{full?: boolean}} opts full = ข้าม cache ทั้งในเครื่องและที่ server (ปุ่ม ↻)
+   */
+  async function syncRecords(opts) {
+    var full = !!(opts && opts.full);
+    var local = full ? null : cachedSnapshot();
+    // โหลดทั้งหมดใหม่เป็นระยะ เผื่อมีการแก้ค่าในชีตที่ตรวจไม่เจอ
+    var maxAge = (window.APP_CONFIG && window.APP_CONFIG.FULL_RESYNC_MS) || 0;
+    if (local && maxAge && Date.now() - (local.fullAt || 0) > maxAge) local = null;
+
+    var params = {};
+    if (local && local.lastRow) {
+      params.sinceRow = local.lastRow;
+      params.anchor = local.anchor;
+      params.editVersion = local.editVersion;
+    }
+    if (full) params.fresh = 1;
+
+    var data = await get('sync', params);
+    var reset = data.reset || !local;
+    var snap = {
+      players: data.players || [],
+      records: reset ? (data.records || []) : local.records.concat(data.records || []),
+      lastRow: data.lastRow || 0,
+      anchor: data.anchor || '',
+      editVersion: data.editVersion || '',
+      fullAt: reset ? Date.now() : local.fullAt
+    };
+    saveSnapshot(snap);
+    cachePlayers(snap.players);
+    return snap;
+  }
+
   MR.API = {
     getUrl: getUrl,
     isConfigured: function () { return /^https:\/\/script\.google\.com\/.+\/exec/.test(getUrl()); },
 
     ping: function () { return get('ping'); },
 
-    getPlayers: async function () {
-      var list = await get('getPlayers');
-      cachePlayers(list);
-      return list;
-    },
     cachedPlayers: cachedPlayers,
 
     /** เพิ่มได้อย่างเดียว — ลบผู้เล่นผ่านแอปไม่ได้ (server ปิดคำสั่ง deletePlayer ไว้) */
     addPlayer: function (name) { return post('addPlayer', { name: name }); },
 
-    bootstrap: async function () {
-      var data = await get('bootstrap');
+    /** หน้าบันทึกยอด: รายชื่อ + ข้อมูลของวันที่เลือก ในการเรียกครั้งเดียว */
+    ledgerInit: async function (date) {
+      var data = await get('ledgerInit', { date: date });
       if (data && data.players) cachePlayers(data.players);
       return data;
     },
-    getRecords: function (range) { return get('getRecords', range || {}); },
+
+    /** หน้าสรุปผล */
+    cachedSnapshot: cachedSnapshot,
+    syncRecords: syncRecords,
+
     getSession: function (date) { return get('getSession', { date: date }); },
     /** บันทึกได้อย่างเดียว — วันที่ที่บันทึกแล้วจะถูก server ปฏิเสธ */
     saveSession: function (session) { return post('saveSession', session); }

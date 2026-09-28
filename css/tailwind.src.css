@@ -1,0 +1,4 @@
+/* ต้นฉบับของ css/tailwind.css — สร้างใหม่ด้วย  npm run build:css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

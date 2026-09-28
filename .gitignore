@@ -9,3 +9,6 @@ Desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Tailwind CLI (ใช้ตอน build CSS เท่านั้น)
+node_modules/
