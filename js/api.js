@@ -134,9 +134,8 @@ window.MR = window.MR || {};
     },
     cachedPlayers: cachedPlayers,
 
+    /** เพิ่มได้อย่างเดียว — ลบผู้เล่นผ่านแอปไม่ได้ (server ปิดคำสั่ง deletePlayer ไว้) */
     addPlayer: function (name) { return post('addPlayer', { name: name }); },
-    /** เอาออกจากรายชื่อที่เลือกได้เท่านั้น — ประวัติการเล่นไม่ถูกแตะ */
-    deletePlayer: function (id) { return post('deletePlayer', { id: id }); },
 
     bootstrap: async function () {
       var data = await get('bootstrap');

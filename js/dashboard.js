@@ -60,6 +60,41 @@
     });
   }
 
+  /* ============================ ข้อความคัดลอกไปแปะไลน์ ============================ */
+
+  /**
+   * บรรทัดแรกเป็นหัวข้อ ตามด้วย "ชื่อ +ยอด" ทีละบรรทัด (items ต้องเรียงมาแล้ว)
+   *   23 Aug 2026
+   *   Tee +1120
+   *   Boss -800
+   */
+  function summaryText(header, items) {
+    return [header].concat(items.map(function (it) {
+      return it.name + ' ' + MR.plainSigned(it.net);
+    })).join('\n');
+  }
+
+  /** หัวข้อของยอดสะสม = วันแรก – วันสุดท้ายที่มีข้อมูลในช่วงที่เลือก */
+  function rangeHeader(records) {
+    var dates = records.map(function (r) { return r.date; }).sort();
+    if (!dates.length) return '';
+    var first = dates[0], last = dates[dates.length - 1];
+    return first === last ? MR.dateEN(first) : MR.dateEN(first) + ' - ' + MR.dateEN(last);
+  }
+
+  async function copyAndToast(text) {
+    var ok = await MR.copyText(text);
+    if (ok) MR.toast('คัดลอกแล้ว — นำไปวางในไลน์ได้เลย', 'success');
+    else MR.toast('คัดลอกไม่สำเร็จ เบราว์เซอร์ไม่อนุญาต', 'error');
+  }
+
+  function copyCumulative() {
+    var records = visibleRecords();
+    var agg = aggregate(records);
+    if (!agg.length) return;
+    copyAndToast(summaryText(rangeHeader(records), agg));
+  }
+
   /* ============================ ตัวกรองเดือน ============================ */
 
   function renderMonthPicker() {
@@ -229,6 +264,7 @@
     var wrap = MR.el('#chartWrap');
     var sub = MR.el('#chartSubtitle');
 
+    MR.el('#copySummaryBtn').disabled = !agg.length;
     if (!agg.length) {
       wrap.innerHTML = '<p class="text-sm text-muted py-8 text-center">ไม่มีข้อมูลในช่วงที่เลือก</p>';
       sub.textContent = '–';
@@ -369,7 +405,7 @@
       return;
     }
 
-    host.innerHTML = sessions.map(function (s) {
+    host.innerHTML = sessions.map(function (s, i) {
       var chips = s.rows.map(function (r) {
         return '<span class="text-xs num px-1.5 py-0.5 rounded" style="background:' +
                (r.net > 0 ? 'var(--pos-wash)' : r.net < 0 ? 'var(--neg-wash)' : 'transparent') +
@@ -378,14 +414,26 @@
       }).join('');
 
       return '<div class="rounded-lg border border-line p-2.5">' +
-        '<div class="flex items-baseline justify-between gap-2 mb-1.5">' +
+        '<div class="flex items-center justify-between gap-2 mb-1.5">' +
           '<span class="text-sm font-semibold">' + MR.dateLabel(s.date) + '</span>' +
-          '<span class="text-xs text-muted shrink-0">' + s.rows.length + ' คน · กองกลาง ' +
-            MR.fmt(s.pot) + '</span>' +
+          '<span class="flex items-center gap-1 shrink-0">' +
+            '<span class="text-xs text-muted">' + s.rows.length + ' คน · กองกลาง ' + MR.fmt(s.pot) + '</span>' +
+            '<button type="button" class="btn btn-ghost btn-sm" data-copy-session="' + i + '" ' +
+                    'title="คัดลอกสรุปวันนี้" aria-label="คัดลอกสรุปวันที่ ' + MR.dateLabel(s.date) + '">📋</button>' +
+          '</span>' +
         '</div>' +
         '<div class="flex flex-wrap gap-1">' + chips + '</div>' +
       '</div>';
     }).join('');
+
+    MR.els('[data-copy-session]', host).forEach(function (btn) {
+      var s = sessions[parseInt(btn.getAttribute('data-copy-session'), 10)];
+      btn.addEventListener('click', function () {
+        copyAndToast(summaryText(MR.dateEN(s.date), s.rows.map(function (r) {
+          return { name: r.player, net: r.net };
+        })));
+      });
+    });
   }
 
   /* ============================ จัดการผู้เล่น ============================ */
@@ -400,36 +448,13 @@
     var counts = {};
     state.records.forEach(function (r) { counts[r.player] = (counts[r.player] || 0) + 1; });
 
+    // ลบผู้เล่นผ่านแอปไม่ได้ (ปิดที่ server ด้วย) — แสดงรายชื่ออย่างเดียว
     host.innerHTML = state.players.map(function (p) {
-      return '<div class="flex items-center gap-2 rounded-lg border border-line px-2.5 py-1.5" ' +
-                  'data-pid="' + MR.escapeHtml(p.id) + '">' +
+      return '<div class="flex items-center gap-2 rounded-lg border border-line px-2.5 py-2.5">' +
         '<span class="flex-1 min-w-0 truncate text-sm">' + MR.escapeHtml(p.name) + '</span>' +
         '<span class="text-xs text-muted num shrink-0">' + (counts[p.name] || 0) + ' วัน</span>' +
-        '<button class="btn btn-ghost btn-sm btn-danger shrink-0" data-remove title="เอาออกจากรายชื่อ">🗑</button>' +
       '</div>';
     }).join('');
-
-    MR.els('[data-pid]', host).forEach(function (rowEl) {
-      var id = rowEl.getAttribute('data-pid');
-      var player = state.players.filter(function (p) { return p.id === id; })[0];
-      if (!player) return;
-
-      MR.el('[data-remove]', rowEl).addEventListener('click', async function () {
-        var ok = await MR.confirm(
-          'เอา "' + player.name + '" ออกจากรายชื่อที่เลือกได้?\n\n' +
-          'ประวัติการเล่นที่บันทึกไว้ยังอยู่ครบและยังนับรวมในหน้าสรุปผลเหมือนเดิม',
-          { danger: true, okText: 'เอาออก' });
-        if (!ok) return;
-        try {
-          await MR.API.deletePlayer(id);
-          state.players = state.players.filter(function (p) { return p.id !== id; });
-          renderPlayerAdmin();
-          MR.toast('เอา "' + player.name + '" ออกจากรายชื่อแล้ว', 'success');
-        } catch (err) {
-          MR.toast('เอาออกไม่สำเร็จ: ' + err.message, 'error');
-        }
-      });
-    });
   }
 
   /* ============================ โหลดข้อมูล ============================ */
@@ -498,6 +523,7 @@
     });
 
     MR.el('#refreshBtn').addEventListener('click', function () { load(true); });
+    MR.el('#copySummaryBtn').addEventListener('click', copyCumulative);
 
     MR.el('#addPlayerForm').addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -541,6 +567,8 @@
     buildChartSVG: buildChartSVG,
     aggregate: aggregate,
     groupSessions: groupSessions,
+    summaryText: summaryText,
+    rangeHeader: rangeHeader,
     barPath: barPath,
     compactValue: compactValue,
     chartMetrics: chartMetrics

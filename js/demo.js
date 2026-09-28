@@ -62,11 +62,6 @@
       return delay({ id: p.id, name: p.name });
     },
 
-    deletePlayer: function (id) {
-      players = players.filter(function (p) { return p.id !== id; });
-      return delay({ id: id });
-    },
-
     bootstrap: function () {
       return delay({ players: players.slice(), records: records.slice() }, 400);
     },

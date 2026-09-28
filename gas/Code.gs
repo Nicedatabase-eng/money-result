@@ -121,16 +121,16 @@ function dispatch_(p) {
 
     case 'getPlayers':    return listPlayers_();
     case 'addPlayer':     return addPlayer_(p);
-    case 'deletePlayer':  return deletePlayer_(p);
 
     case 'getRecords':    return listRecords_(p);
     case 'getSession':    return getSession_(p);
     case 'saveSession':   return saveSession_(p);
 
-    // ---- คำสั่งที่ถูกถอดออกโดยตั้งใจ (ชีต Records เป็นแบบเขียนเพิ่มอย่างเดียว) ----
+    // ---- คำสั่งที่ถูกถอดออกโดยตั้งใจ (Records และรายชื่อผู้เล่นเป็นแบบเขียนเพิ่มอย่างเดียว) ----
     // ตอบให้ชัดว่าปิดถาวร ไม่ใช่พิมพ์ผิด เผื่อมีเว็บเวอร์ชันเก่าค้างอยู่ในเครื่องใคร
     case 'deleteSession':
     case 'renamePlayer':
+    case 'deletePlayer':
       throw new Error('คำสั่งนี้ถูกปิดใช้งานถาวร — ข้อมูลที่บันทึกแล้วแก้หรือลบผ่านแอปไม่ได้');
 
     default:
@@ -185,26 +185,6 @@ function addPlayer_(p) {
   } finally {
     lock.releaseLock();
   }
-}
-
-/**
- * เอาผู้เล่นออกจาก "รายชื่อที่เลือกได้" เท่านั้น (ตั้ง Active = FALSE)
- * ไม่มีการลบแถวใด ๆ ในชีต Records — ประวัติการเล่นเดิมยังอยู่ครบ
- * และยังถูกนับรวมในหน้าสรุปผลเหมือนเดิม
- */
-function deletePlayer_(p) {
-  var id = String(p.id || '').trim();
-  if (!id) throw new Error('ต้องระบุ id');
-
-  var sheet = getSheet_(CONFIG.SHEETS.PLAYERS, HEADERS.PLAYERS);
-  var rows = readObjects_(sheet);
-  for (var i = 0; i < rows.length; i++) {
-    if (String(rows[i].ID) === id) {
-      sheet.getRange(rows[i]._row, 3).setValue(false);
-      return { id: id, name: String(rows[i].Name) };
-    }
-  }
-  throw new Error('ไม่พบผู้เล่น id: ' + id);
 }
 
 /* ============================================================================

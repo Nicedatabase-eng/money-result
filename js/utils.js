@@ -70,6 +70,24 @@ window.MR = window.MR || {};
            String(buddhistYear).padStart(2, '0');
   };
 
+  var EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  /** "2026-08-23" -> "23 Aug 2026" (รูปแบบข้อความที่คัดลอกไปแปะในไลน์) */
+  MR.dateEN = function (iso) {
+    var parts = String(iso || '').split('-');
+    if (parts.length < 3) return iso || '';
+    var m = parseInt(parts[1], 10) - 1;
+    return parseInt(parts[2], 10) + ' ' + (EN_MONTHS[m] || parts[1]) + ' ' + parts[0];
+  };
+
+  /** ตัวเลขล้วนสำหรับข้อความคัดลอก: +1120 / -111 / 0 (ไม่มีคอมมา ใช้ขีดลบธรรมดา) */
+  MR.plainSigned = function (n) {
+    var v = MR.round2(n);
+    if (v === 0) return '0';
+    return (v > 0 ? '+' : '-') + String(Math.abs(v));
+  };
+
   /* ---------- หัวใจของระบบ: การเกลี่ยยอด ---------- */
 
   /**

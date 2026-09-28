@@ -255,26 +255,12 @@ input[type="date"].field {
 }
 .btn-add:active { background: var(--accent); color: var(--accent-ink); }
 
-/* ตัวเพิ่ม/ลดจำนวนครั้ง — กดง่ายกว่าพิมพ์บนมือถือ */
-.stepper {
-  display: inline-flex; align-items: center;
-  border: 1px solid var(--border); border-radius: 10px;
-  background: var(--surface-2); overflow: hidden;
-}
-.stepper button {
-  width: 40px; min-height: 40px;
-  font-size: 1.15rem; font-weight: 600; line-height: 1;
-  color: var(--ink-2); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-}
-.stepper button:active { background: var(--accent-wash); }
-.stepper input {
-  width: 44px; min-height: 40px;
-  border: 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
-  background: transparent; color: var(--ink);
-  text-align: center; font-size: 16px; font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  outline: none; -webkit-appearance: none; appearance: none;
+/* การ์ดผู้เล่น — เว้นระยะด้านบนให้พ้นหัวเว็บตอนกดชื่อแล้วเลื่อนมาหา */
+.player-card { scroll-margin-top: calc(env(safe-area-inset-top) + 3.5rem + 0.75rem); }
+.card-flash { animation: card-flash 1.4s ease-out; }
+@keyframes card-flash {
+  0%, 35% { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-wash); }
+  100%    { border-color: var(--border); box-shadow: none; }
 }
 
 /* ปุ่มเลือกผู้เล่น / เลือกเดือน (toggle chip) */
@@ -290,6 +276,11 @@ input[type="date"].field {
 .chip:active { transform: scale(.97); }
 .chip[aria-pressed="true"] {
   background: var(--accent); color: var(--accent-ink);
+  border-color: transparent; font-weight: 600;
+}
+/* หลังยืนยันผู้เข้าร่วม — ชิปเป็นทางลัดไปที่การ์ด ไม่ใช่ปุ่มเลือก/เอาออก */
+.chip-jump {
+  background: var(--accent-wash); color: var(--pos-text);
   border-color: transparent; font-weight: 600;
 }
 
@@ -368,7 +359,8 @@ input[type="date"].field {
 
 #toastHost {
   position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 6.5rem));
+  /* --bar-h = ความสูงแถบล่างของหน้าบันทึกยอด (ขยาย/พับได้) — toast ต้องลอยเหนือแถบเสมอ */
+  bottom: max(6.5rem, calc(env(safe-area-inset-bottom) + 6.5rem), calc(var(--bar-h, 0px) + 0.75rem));
   z-index: 80; display: flex; flex-direction: column; gap: 0.5rem;
   align-items: center; width: max-content; max-width: min(92vw, 30rem);
   pointer-events: none;
@@ -433,6 +425,23 @@ input[type="date"].field {
   padding-bottom: max(0.7rem, calc(env(safe-area-inset-bottom) + 0.35rem));
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.10);
 }
+
+/* แผงเกลี่ยยอดในแถบล่าง */
+.recon {
+  border-bottom: 1px solid var(--border);
+  margin: -0.35rem 0 0.6rem;
+  padding-bottom: 0.35rem;
+}
+.recon-toggle {
+  display: flex; align-items: center; gap: 0.6rem;
+  width: 100%; min-height: 40px;
+  cursor: pointer; text-align: left;
+}
+.recon-caret { color: var(--muted); font-size: 0.75rem; transition: transform .15s; }
+.recon-toggle[aria-expanded="true"] .recon-caret { transform: rotate(180deg); }
+.recon-list { max-height: 34vh; max-height: 34dvh; }
+.recon-row { border-radius: 8px; padding: 0 0.35rem; }
+.recon-row[data-remarked="true"] { background: var(--warn-wash); }
 
 [hidden] { display: none !important; }
 

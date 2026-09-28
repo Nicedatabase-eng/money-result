@@ -1,5 +1,5 @@
 /**
- * Shell — ส่วนที่ใช้ร่วมกันทุกหน้า: theme, toast, modal ตั้งค่า API
+ * Shell — ส่วนที่ใช้ร่วมกันทุกหน้า: theme, toast, confirm, คัดลอกข้อความ
  */
 window.MR = window.MR || {};
 
@@ -94,6 +94,31 @@ window.MR = window.MR || {};
       document.body.appendChild(backdrop);
       backdrop.querySelector('[data-yes]').focus();
     });
+  };
+
+  /* ---------- คัดลอกข้อความ ---------- */
+
+  /** @returns {Promise<boolean>} คัดลอกสำเร็จหรือไม่ */
+  MR.copyText = async function (text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) { /* ตกไปใช้วิธีสำรองด้านล่าง */ }
+
+    // วิธีสำรองสำหรับเบราว์เซอร์เก่า / หน้าที่ไม่ได้เปิดผ่าน https
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
   };
 
   /* ---------- init ---------- */
